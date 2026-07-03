@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./icons/icon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="Gestion de budget personnel — hors ligne et chiffré" />
+    <meta name="theme-color" content="#2a78d6" />
+    <title>App Budget</title>
+    <script>
+      // Applique le thème avant le premier rendu pour éviter le flash.
+      // Lu depuis localStorage (non sensible) car la base est chiffrée.
+      ;(function () {
+        var pref = localStorage.getItem('app-budget-theme') || 'auto'
+        var dark =
+          pref === 'dark' ||
+          (pref === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
