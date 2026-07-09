@@ -19,7 +19,76 @@ export type EntityTableName = 'accounts' | 'categories' | 'transactions' | 'budg
 
 const META_SALT = 'salt'
 const META_CHECK = 'check'
+const META_SESSION = 'session'
 const SETTINGS_ID = 'settings:singleton'
+
+// --- Session de déverrouillage -----------------------------------------------
+// La clé AES (non extractible : impossible d'en lire les octets) est conservée
+// dans IndexedDB avec une date d'expiration, pour ne pas redemander le PIN à
+// chaque rechargement de la page. Le PIN reste requis après le délai
+// d'inactivité choisi, ou après un verrouillage manuel.
+
+interface SessionValue {
+  key: CryptoKey
+  /** Timestamp ms d'expiration ; null = pas d'expiration (délai « Jamais »). */
+  expiresAt: number | null
+}
+
+function sessionExpiry(lockDelayMinutes: number): number | null {
+  return lockDelayMinutes > 0 ? Date.now() + lockDelayMinutes * 60_000 : null
+}
+
+/** Certains environnements ne savent pas cloner une CryptoKey : on dégrade sans casser. */
+export async function saveSession(
+  db: BudgetDB,
+  key: CryptoKey,
+  lockDelayMinutes: number,
+): Promise<void> {
+  try {
+    const value: SessionValue = { key, expiresAt: sessionExpiry(lockDelayMinutes) }
+    await db.meta.put({ key: META_SESSION, value })
+  } catch {
+    // Sans session persistée, le PIN sera simplement redemandé au rechargement.
+  }
+}
+
+export async function loadSession(db: BudgetDB): Promise<CryptoKey | null> {
+  try {
+    const record = await db.meta.get(META_SESSION)
+    if (!record) return null
+    const { key, expiresAt } = record.value as SessionValue
+    if (expiresAt !== null && Date.now() > expiresAt) {
+      await db.meta.delete(META_SESSION)
+      return null
+    }
+    return key
+  } catch {
+    return null
+  }
+}
+
+/** Prolonge la session après une activité de l'utilisateur. */
+export async function touchSession(db: BudgetDB, lockDelayMinutes: number): Promise<void> {
+  try {
+    const record = await db.meta.get(META_SESSION)
+    if (!record) return
+    const { key } = record.value as SessionValue
+    await db.meta.put({
+      key: META_SESSION,
+      value: { key, expiresAt: sessionExpiry(lockDelayMinutes) } satisfies SessionValue,
+    })
+  } catch {
+    // Voir saveSession.
+  }
+}
+
+export async function clearSession(db: BudgetDB): Promise<void> {
+  try {
+    await db.meta.delete(META_SESSION)
+  } catch {
+    // Voir saveSession.
+  }
+}
 
 export async function isInitialized(db: BudgetDB): Promise<boolean> {
   return (await db.meta.get(META_SALT)) !== undefined
@@ -58,7 +127,7 @@ export async function unlockVault(db: BudgetDB, pin: string): Promise<CryptoKey 
 export class EncryptedRepository {
   constructor(
     private db: BudgetDB,
-    private key: CryptoKey,
+    readonly key: CryptoKey,
   ) {}
 
   async loadAll(): Promise<AppData> {

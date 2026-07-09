@@ -180,8 +180,13 @@ export function SettingsPage() {
             <option value={1}>Après 1 minute</option>
             <option value={5}>Après 5 minutes</option>
             <option value={15}>Après 15 minutes</option>
+            <option value={60}>Après 1 heure</option>
             <option value={0}>Jamais</option>
           </select>
+          <p className="chart-note" style={{ marginTop: '0.35rem' }}>
+            Tant que ce délai n’est pas écoulé, rouvrir ou recharger l’application ne redemande
+            pas le code PIN.
+          </p>
         </div>
         <button type="button" className="btn" onClick={() => setPinModalOpen(true)}>
           Changer le code PIN

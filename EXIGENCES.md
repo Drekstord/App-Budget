@@ -34,7 +34,9 @@ et conseils sur ses habitudes de dépense.
 
 ### RF-1 — Sécurité d'accès
 - **RF-1.1** À la première ouverture, l'utilisateur définit un code PIN (4 à 8 chiffres).
-- **RF-1.2** Toute ouverture de l'application exige la saisie du PIN.
+- **RF-1.2** L'ouverture de l'application exige la saisie du PIN, sauf si une
+  session de déverrouillage est encore valide (délai d'inactivité non écoulé) —
+  un simple rechargement de page ne redemande pas le PIN.
 - **RF-1.3** Les données sont chiffrées au repos (AES-256-GCM), la clé étant dérivée
   du PIN (PBKDF2/Argon2). Sans PIN, les données locales sont illisibles.
 - **RF-1.4** Verrouillage automatique après une période d'inactivité (paramétrable).
