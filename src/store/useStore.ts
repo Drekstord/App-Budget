@@ -8,6 +8,7 @@ import {
   type EntityTableName,
 } from '../lib/repository.ts'
 import {
+  DEFAULT_SETTINGS,
   nowISO,
   stamp,
   type Account,
@@ -107,13 +108,7 @@ export const useStore = create<AppState>()((set, get) => {
         categories,
         transactions: [],
         budgets: [],
-        settings: {
-          theme: 'auto',
-          monthStartDay: 1,
-          lockDelayMinutes: 5,
-          warnThreshold: 80,
-          defaultAccountId: account.id,
-        },
+        settings: { ...DEFAULT_SETTINGS, defaultAccountId: account.id },
       }
       await repo.replaceAll(data)
       set({ phase: 'unlocked', data, repo })

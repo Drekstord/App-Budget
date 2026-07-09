@@ -12,6 +12,13 @@ Les exigences complètes sont dans [EXIGENCES.md](EXIGENCES.md).
 - 🔐 Code PIN + chiffrement de toutes les données au repos, verrouillage automatique
 - 🧾 Saisie ultra-rapide des dépenses/revenus, virements entre comptes,
   recherche et filtres
+- 📷 **Scan de ticket de caisse** : OCR 100 % local (Tesseract WASM, la photo ne
+  quitte jamais l'appareil) — montant, enseigne, date et catégorie détectés,
+  toujours soumis à confirmation avant ajout. Seul le premier scan nécessite
+  une connexion (téléchargement du moteur, ensuite mis en cache hors ligne)
+- 🔔 Alertes à la saisie : plafond de budget atteint, seuil d'avertissement
+  franchi, grosse dépense au-delà d'un montant configurable — en surimpression
+  dans l'app et, en option, en notifications système
 - 🏷️ Catégories prédéfinies + personnalisables (sous-catégories, icônes, couleurs)
 - 🎯 Budgets mensuels par catégorie : jauges, seuil d'alerte, projection de dépassement
 - 📊 Tableau de bord : solde, taux d'épargne, répartition par catégorie,
@@ -48,5 +55,7 @@ Le build est 100 % statique : héberge le contenu de `dist/` n'importe où
 - **IndexedDB (Dexie)** — coffre chiffré : seuls les identifiants sont en clair
 - **WebCrypto** — PBKDF2 (600 000 itérations) → AES-256-GCM
 - **Zustand** — état applicatif ; **Recharts** — graphiques
+- **Tesseract.js** — OCR embarqué (moteur WASM et langue française auto-hébergés
+  dans `public/ocr`, aucun CDN)
 - Chaque entité porte UUID + horodatages + suppression logique : prêt pour une
   future synchronisation via serveur privé (V3)

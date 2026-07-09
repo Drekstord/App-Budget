@@ -127,6 +127,48 @@ export function SettingsPage() {
       </section>
 
       <section className="card">
+        <h2>Alertes</h2>
+        <div className="field">
+          <label htmlFor="set-large">Alerte « grosse dépense » à partir de</label>
+          <select
+            id="set-large"
+            value={settings.largeExpenseAlert}
+            onChange={(e) => void updateSettings({ largeExpenseAlert: Number(e.target.value) })}
+          >
+            <option value={0}>Désactivée</option>
+            <option value={5000}>50 €</option>
+            <option value={10000}>100 €</option>
+            <option value={20000}>200 €</option>
+            <option value={50000}>500 €</option>
+          </select>
+        </div>
+        <div className="field">
+          <label>
+            <input
+              type="checkbox"
+              style={{ width: 'auto', minHeight: 'auto', marginRight: '0.5rem' }}
+              checked={settings.systemNotifications}
+              onChange={(e) => {
+                const enabled = e.target.checked
+                if (enabled && typeof Notification !== 'undefined') {
+                  void Notification.requestPermission().then((perm) => {
+                    void updateSettings({ systemNotifications: perm === 'granted' })
+                  })
+                } else {
+                  void updateSettings({ systemNotifications: false })
+                }
+              }}
+            />
+            Afficher aussi les alertes en notifications système
+          </label>
+          <p className="chart-note" style={{ marginTop: '0.35rem' }}>
+            Les alertes (plafond de budget atteint, grosse dépense) s’affichent toujours dans
+            l’application au moment de la saisie.
+          </p>
+        </div>
+      </section>
+
+      <section className="card">
         <h2>Sécurité</h2>
         <div className="field">
           <label htmlFor="set-lock">Verrouillage automatique</label>

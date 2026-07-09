@@ -63,6 +63,10 @@ export interface Settings {
   lockDelayMinutes: number
   /** Seuil d'avertissement budget, en pourcentage (ex. 80). */
   warnThreshold: number
+  /** Alerte « grosse dépense » au-delà de ce montant en centimes (0 = désactivée). */
+  largeExpenseAlert: number
+  /** Relayer les alertes en notifications système (si permission accordée). */
+  systemNotifications: boolean
   defaultAccountId: string | null
 }
 
@@ -79,6 +83,8 @@ export const DEFAULT_SETTINGS: Settings = {
   monthStartDay: 1,
   lockDelayMinutes: 5,
   warnThreshold: 80,
+  largeExpenseAlert: 10000,
+  systemNotifications: false,
   defaultAccountId: null,
 }
 

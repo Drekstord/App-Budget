@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '../store/useStore.ts'
-import { alive, type Transaction, type TransactionType } from '../domain/types.ts'
-import { centsToInput, parseAmountToCents } from '../domain/money.ts'
+import { alive, type Category, type Transaction, type TransactionType } from '../domain/types.ts'
+import { centsToInput, formatEUR, parseAmountToCents } from '../domain/money.ts'
 import { todayISO } from '../domain/periods.ts'
+import { parseReceipt, type ParsedReceipt } from '../domain/receipt.ts'
+import { computeTransactionAlerts } from '../domain/alerts.ts'
+import { notifySystem, useToasts } from '../store/toasts.ts'
 import { Modal } from './Modal.tsx'
 
 interface TransactionFormProps {
@@ -18,11 +21,14 @@ const TYPE_LABELS: Record<TransactionType, string> = {
   transfer: 'Virement',
 }
 
+type ScanState = 'idle' | 'processing' | 'done' | 'error'
+
 export function TransactionForm({ open, onClose, transaction }: TransactionFormProps) {
   const data = useStore((s) => s.data)
   const addTransaction = useStore((s) => s.addTransaction)
   const updateTransaction = useStore((s) => s.updateTransaction)
   const deleteTransaction = useStore((s) => s.deleteTransaction)
+  const pushToasts = useToasts((s) => s.push)
 
   const accounts = useMemo(
     () => (data ? alive(data.accounts).filter((a) => !a.archived) : []),
@@ -44,6 +50,10 @@ export function TransactionForm({ open, onClose, transaction }: TransactionFormP
   const [showDetails, setShowDetails] = useState(false)
   const [error, setError] = useState('')
   const amountRef = useRef<HTMLInputElement>(null)
+  const scanInputRef = useRef<HTMLInputElement>(null)
+  const [scanState, setScanState] = useState<ScanState>('idle')
+  const [scanProgress, setScanProgress] = useState(0)
+  const [scanSummary, setScanSummary] = useState('')
 
   // (Ré)initialise le formulaire à chaque ouverture.
   useEffect(() => {
@@ -70,6 +80,9 @@ export function TransactionForm({ open, onClose, transaction }: TransactionFormP
       setShowDetails(false)
     }
     setError('')
+    setScanState('idle')
+    setScanProgress(0)
+    setScanSummary('')
     setTimeout(() => amountRef.current?.focus(), 50)
   }, [open, transaction, defaultAccountId])
 
@@ -77,6 +90,68 @@ export function TransactionForm({ open, onClose, transaction }: TransactionFormP
   const categories = alive(data.categories).filter(
     (c) => c.kind === (type === 'income' ? 'income' : 'expense'),
   )
+
+  /** Catégorie suggérée : d'abord l'historique du même marchand, sinon l'indice du ticket. */
+  const suggestCategory = (parsed: ParsedReceipt): Category | null => {
+    const expenseCategories = alive(data.categories).filter((c) => c.kind === 'expense')
+    if (parsed.merchant) {
+      const needle = parsed.merchant.toLowerCase()
+      const past = alive(data.transactions)
+        .filter((t) => t.categoryId && t.payee.toLowerCase() === needle)
+        .sort((a, b) => b.date.localeCompare(a.date))[0]
+      if (past) {
+        const cat = expenseCategories.find((c) => c.id === past.categoryId)
+        if (cat) return cat
+      }
+    }
+    if (parsed.categoryHint) {
+      const hint = parsed.categoryHint.toLowerCase()
+      const cat = expenseCategories.find((c) => c.name.toLowerCase() === hint)
+      if (cat) return cat
+    }
+    return null
+  }
+
+  const onScanFile = async (file: File) => {
+    setScanState('processing')
+    setScanProgress(0)
+    setScanSummary('')
+    setError('')
+    try {
+      const { recognizeReceipt } = await import('../lib/ocr.ts')
+      const text = await recognizeReceipt(file, setScanProgress)
+      const parsed = parseReceipt(text)
+      if (!parsed.amountCents && !parsed.merchant && !parsed.date) {
+        setScanState('error')
+        setScanSummary(
+          'Impossible de lire ce ticket. Réessaie avec une photo nette, bien éclairée, prise du dessus.',
+        )
+        return
+      }
+      setType('expense')
+      if (parsed.amountCents) setAmount(centsToInput(parsed.amountCents))
+      if (parsed.date) setDate(parsed.date)
+      if (parsed.merchant) {
+        setPayee(parsed.merchant)
+        setShowDetails(true)
+      }
+      const suggested = suggestCategory(parsed)
+      if (suggested) setCategoryId(suggested.id)
+      const detected = [
+        parsed.amountCents ? formatEUR(parsed.amountCents) : 'montant non lu',
+        parsed.merchant ?? 'lieu non lu',
+        parsed.date
+          ? new Date(parsed.date + 'T00:00:00').toLocaleDateString('fr-FR')
+          : 'date non lue',
+        suggested ? `catégorie proposée : ${suggested.name}` : null,
+      ].filter(Boolean)
+      setScanSummary(`Détecté : ${detected.join(' · ')}.`)
+      setScanState('done')
+    } catch {
+      setScanState('error')
+      setScanSummary('Le scan a échoué. Vérifie ta connexion (nécessaire au premier scan) et réessaie.')
+    }
+  }
 
   const submit = async () => {
     const cents = parseAmountToCents(amount)
@@ -106,8 +181,17 @@ export function TransactionForm({ open, onClose, transaction }: TransactionFormP
       payee: payee.trim(),
       note: note.trim(),
     }
-    if (transaction) await updateTransaction(transaction.id, payload)
-    else await addTransaction(payload)
+    if (transaction) {
+      await updateTransaction(transaction.id, payload)
+    } else {
+      // Alertes calculées sur l'état AVANT ajout pour détecter les franchissements.
+      const alerts = computeTransactionAlerts(data, payload)
+      await addTransaction(payload)
+      if (alerts.length > 0) {
+        pushToasts(alerts)
+        void notifySystem(alerts, data.settings.systemNotifications)
+      }
+    }
     onClose()
   }
 
@@ -130,6 +214,57 @@ export function TransactionForm({ open, onClose, transaction }: TransactionFormP
           void submit()
         }}
       >
+        {!transaction && (
+          <div className="field">
+            <button
+              type="button"
+              className="btn"
+              style={{ width: '100%' }}
+              disabled={scanState === 'processing'}
+              onClick={() => scanInputRef.current?.click()}
+            >
+              <span aria-hidden="true">📷</span>
+              {scanState === 'processing' ? 'Lecture du ticket…' : 'Scanner un ticket de caisse'}
+            </button>
+            <input
+              ref={scanInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="visually-hidden"
+              aria-label="Photo du ticket de caisse"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) void onScanFile(file)
+                e.target.value = ''
+              }}
+            />
+            {scanState === 'processing' && (
+              <div
+                className="scan-progress"
+                role="progressbar"
+                aria-valuenow={Math.round(scanProgress * 100)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label="Progression de la lecture du ticket"
+              >
+                <span style={{ width: `${Math.round(scanProgress * 100)}%` }} />
+              </div>
+            )}
+            {scanSummary && (
+              <p className="scan-summary" role="status">
+                {scanSummary}
+                {scanState === 'done' && (
+                  <>
+                    <br />
+                    <strong>Vérifie les champs ci-dessous, puis confirme avec « Ajouter ».</strong>
+                  </>
+                )}
+              </p>
+            )}
+          </div>
+        )}
+
         <div className="field">
           <span className="field-label" id="tx-type-label">
             Type

@@ -709,6 +709,65 @@ table.data th.num {
   min-width: 130px;
 }
 
+/* ---------- Toasts ---------- */
+
+.toast-stack {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 0.75rem);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: min(94vw, 480px);
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  align-items: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border);
+  animation: toast-in 0.25s ease;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------- Scan de ticket ---------- */
+
+.scan-progress {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  overflow: hidden;
+  margin: 0.75rem 0;
+}
+
+.scan-progress > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+
+.scan-summary {
+  margin: 0.75rem 0;
+  padding: 0.75rem;
+  border-radius: 10px;
+  background: var(--surface-2);
+  font-size: 0.9rem;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
