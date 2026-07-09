@@ -1,13 +1,18 @@
 import { create } from 'zustand'
 import { getDB } from '../lib/db.ts'
 import {
+  clearSession,
   EncryptedRepository,
   isInitialized,
+  loadSession,
+  saveSession,
   setupVault,
+  touchSession,
   unlockVault,
   type EntityTableName,
 } from '../lib/repository.ts'
 import {
+  DEFAULT_SETTINGS,
   nowISO,
   stamp,
   type Account,
@@ -38,6 +43,7 @@ interface AppState {
   setupPin: (pin: string) => Promise<void>
   unlock: (pin: string) => Promise<boolean>
   lock: () => void
+  extendSession: () => Promise<void>
   changePin: (currentPin: string, newPin: string) => Promise<boolean>
 
   addTransaction: (input: TransactionInput) => Promise<void>
@@ -93,7 +99,23 @@ export const useStore = create<AppState>()((set, get) => {
 
     async init() {
       const db = getDB()
-      set({ phase: (await isInitialized(db)) ? 'locked' : 'setup' })
+      if (!(await isInitialized(db))) {
+        set({ phase: 'setup' })
+        return
+      }
+      // Session de déverrouillage encore valide → pas de PIN au rechargement.
+      const sessionKey = await loadSession(db)
+      if (sessionKey) {
+        try {
+          const repo = new EncryptedRepository(db, sessionKey)
+          const data = await repo.loadAll()
+          set({ phase: 'unlocked', data, repo })
+          return
+        } catch {
+          await clearSession(db)
+        }
+      }
+      set({ phase: 'locked' })
     },
 
     async setupPin(pin) {
@@ -107,15 +129,10 @@ export const useStore = create<AppState>()((set, get) => {
         categories,
         transactions: [],
         budgets: [],
-        settings: {
-          theme: 'auto',
-          monthStartDay: 1,
-          lockDelayMinutes: 5,
-          warnThreshold: 80,
-          defaultAccountId: account.id,
-        },
+        settings: { ...DEFAULT_SETTINGS, defaultAccountId: account.id },
       }
       await repo.replaceAll(data)
+      await saveSession(db, key, data.settings.lockDelayMinutes)
       set({ phase: 'unlocked', data, repo })
     },
 
@@ -125,20 +142,28 @@ export const useStore = create<AppState>()((set, get) => {
       if (!key) return false
       const repo = new EncryptedRepository(db, key)
       const data = await repo.loadAll()
+      await saveSession(db, key, data.settings.lockDelayMinutes)
       set({ phase: 'unlocked', data, repo })
       return true
     },
 
     lock() {
+      void clearSession(getDB())
       set({ phase: 'locked', data: null, repo: null })
+    },
+
+    async extendSession() {
+      const delay = get().data?.settings.lockDelayMinutes ?? 5
+      await touchSession(getDB(), delay)
     },
 
     async changePin(currentPin, newPin) {
       const db = getDB()
       const key = await unlockVault(db, currentPin)
       if (!key) return false
-      const { repo } = requireSession(get())
+      const { repo, data } = requireSession(get())
       const next = await repo.changePin(newPin)
+      await saveSession(db, next.key, data.settings.lockDelayMinutes)
       set({ repo: next })
       return true
     },
@@ -257,6 +282,9 @@ export const useStore = create<AppState>()((set, get) => {
       const settings = { ...data.settings, ...patch }
       set({ data: { ...data, settings } })
       await repo.putSettings(settings)
+      if (patch.lockDelayMinutes !== undefined) {
+        await saveSession(getDB(), repo.key, settings.lockDelayMinutes)
+      }
     },
 
     async importData(imported) {

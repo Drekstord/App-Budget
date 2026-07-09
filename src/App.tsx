@@ -16,16 +16,24 @@ function useAutoLock() {
   const phase = useStore((s) => s.phase)
   const delayMinutes = useStore((s) => s.data?.settings.lockDelayMinutes ?? 5)
   const lock = useStore((s) => s.lock)
+  const extendSession = useStore((s) => s.extendSession)
 
   useEffect(() => {
     if (phase !== 'unlocked' || delayMinutes <= 0) return
     const delayMs = delayMinutes * 60_000
     let timer = window.setTimeout(lock, delayMs)
     let hiddenAt: number | null = null
+    let lastExtend = Date.now()
 
     const reset = () => {
       window.clearTimeout(timer)
       timer = window.setTimeout(lock, delayMs)
+      // Prolonge aussi la session persistée (au plus une fois toutes les 45 s)
+      // pour qu'un rechargement ne redemande pas le PIN pendant l'utilisation.
+      if (Date.now() - lastExtend > 45_000) {
+        lastExtend = Date.now()
+        void extendSession()
+      }
     }
     const onVisibility = () => {
       if (document.hidden) {
@@ -45,7 +53,7 @@ function useAutoLock() {
       events.forEach((e) => window.removeEventListener(e, reset))
       document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [phase, delayMinutes, lock])
+  }, [phase, delayMinutes, lock, extendSession])
 }
 
 export default function App() {

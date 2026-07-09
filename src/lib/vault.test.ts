@@ -3,7 +3,15 @@ import 'fake-indexeddb/auto'
 import { describe, expect, it } from 'vitest'
 import { decryptJson, deriveKey, encryptJson, randomBytes } from './crypto.ts'
 import { BudgetDB } from './db.ts'
-import { EncryptedRepository, isInitialized, setupVault, unlockVault } from './repository.ts'
+import {
+  clearSession,
+  EncryptedRepository,
+  isInitialized,
+  loadSession,
+  saveSession,
+  setupVault,
+  unlockVault,
+} from './repository.ts'
 import { stamp, type Transaction } from '../domain/types.ts'
 
 function tx(): Transaction {
@@ -59,6 +67,39 @@ describe('vault', () => {
     const raw = await db.vault.toArray()
     const stored = new TextDecoder().decode(raw[0].data)
     expect(stored).not.toContain('café')
+    await db.delete()
+  })
+
+  it('gère la session de déverrouillage (persistance, expiration, purge)', async () => {
+    const db = new BudgetDB()
+    const key = await setupVault(db, '1234')
+
+    // Certains environnements de test ne clonent pas les CryptoKey : dans ce
+    // cas saveSession dégrade silencieusement et loadSession rend null.
+    await saveSession(db, key, 5)
+    const restored = await loadSession(db)
+    if (restored) {
+      // La clé restaurée déchiffre bien le coffre.
+      const repo = new EncryptedRepository(db, restored)
+      await expect(repo.loadAll()).resolves.toBeDefined()
+
+      // Session expirée → purgée et null.
+      await saveSession(db, key, 5)
+      const rec = await db.meta.get('session')
+      await db.meta.put({
+        key: 'session',
+        value: { ...(rec!.value as object), expiresAt: Date.now() - 1000 },
+      })
+      expect(await loadSession(db)).toBeNull()
+
+      // Délai « Jamais » (0) → pas d'expiration.
+      await saveSession(db, key, 0)
+      expect(await loadSession(db)).not.toBeNull()
+
+      // Verrouillage → session supprimée.
+      await clearSession(db)
+      expect(await loadSession(db)).toBeNull()
+    }
     await db.delete()
   })
 

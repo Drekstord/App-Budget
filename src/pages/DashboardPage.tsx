@@ -1,9 +1,12 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useStore } from '../store/useStore.ts'
 import { useResolvedTheme } from '../theme.ts'
+import { alive } from '../domain/types.ts'
 import { formatEUR } from '../domain/money.ts'
 import { periodForDate, todayISO } from '../domain/periods.ts'
 import {
+  accountBalance,
   budgetStatuses,
   computeKpis,
   expensesByRootCategory,
@@ -27,6 +30,7 @@ export function DashboardPage() {
 
   if (!data) return null
   const period = periodForDate(todayISO(), data.settings.monthStartDay)
+  const accounts = alive(data.accounts).filter((a) => !a.archived)
   const kpis = computeKpis(data, period)
   const slices = expensesByRootCategory(data, period)
   const series = periodSeries(data, 6)
@@ -61,6 +65,28 @@ export function DashboardPage() {
           <div className="kpi-sub">des revenus du mois</div>
         </div>
       </div>
+
+      <section className="card" aria-label="Solde de chaque compte">
+        <h2>Mes comptes</h2>
+        <ul className="list">
+          {accounts.map((a) => (
+            <li key={a.id} className="list-item" style={{ minHeight: 48, padding: '0.45rem 0.25rem' }}>
+              <span aria-hidden="true" style={{ fontSize: '1.15rem' }}>
+                {a.icon}
+              </span>
+              <span className="item-body">
+                <span className="item-title" style={{ fontWeight: 500 }}>
+                  {a.name}
+                </span>
+              </span>
+              <span className="amount">{formatEUR(accountBalance(a, data.transactions))}</span>
+            </li>
+          ))}
+        </ul>
+        <p style={{ margin: '0.5rem 0 0' }}>
+          <Link to="/comptes">Gérer les comptes →</Link>
+        </p>
+      </section>
 
       {advice.length > 0 && (
         <section aria-label="Conseils et alertes" className="stack" style={{ gap: '0.5rem' }}>

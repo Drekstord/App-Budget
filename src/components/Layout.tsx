@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useStore } from '../store/useStore.ts'
+import { Toasts } from './Toasts.tsx'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Accueil', icon: '📊' },
@@ -24,6 +25,7 @@ export function Layout() {
 
   return (
     <div className="app-shell">
+      <Toasts />
       <nav className="app-nav" aria-label="Navigation principale">
         {NAV_ITEMS.map((item) => (
           <NavLink key={item.to} to={item.to} end={item.to === '/'}>
