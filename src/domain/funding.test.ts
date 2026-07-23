@@ -30,7 +30,7 @@ function flow(
   label: string,
   amount: number,
   date: string,
-  recurrence: 'once' | 'monthly',
+  recurrence: 'once' | 'monthly' | 'yearly',
   kind: 'fixed' | 'variable' = 'fixed',
 ): FundingFlow {
   return { id: label, label, amount, date, recurrence, kind }
@@ -210,6 +210,34 @@ describe('computeFundingPlan — projection et faisabilité', () => {
     expect(r.timeline[0].monthKey).toBe('2026-07')
     expect(r.timeline[3].monthKey).toBe('2026-10')
     expect(r.timeline[3].isTargetMonth).toBe(true)
+  })
+
+  it('compte une prime annuelle si elle tombe avant l’échéance', () => {
+    const p = plan({
+      targetAmount: 500000,
+      targetDate: '2026-12-15',
+      accountRules: [rule('courant', 0)],
+      // Prime annuelle de 1 000 € chaque 5 décembre → une occurrence (5 déc. 2026,
+      // avant l'échéance du 15).
+      incomes: [flow('Prime', 100000, '2025-12-05', 'yearly', 'variable')],
+    })
+    const r = computeFundingPlan(p, { accounts, transactions: NO_TX }, '2026-07-23')
+    expect(r.totalVariableIncome).toBe(100000)
+    const dec = r.timeline.find((t) => t.monthKey === '2026-12')!
+    expect(dec.variableIncome).toBe(100000)
+    // Pas de double comptage sur les autres mois.
+    expect(r.timeline.filter((t) => t.variableIncome > 0)).toHaveLength(1)
+  })
+
+  it('ignore une prime annuelle qui tombe après l’échéance', () => {
+    const p = plan({
+      targetAmount: 500000,
+      targetDate: '2026-10-15',
+      accountRules: [rule('courant', 0)],
+      incomes: [flow('Prime', 100000, '2025-12-20', 'yearly', 'variable')], // déc. > oct.
+    })
+    const r = computeFundingPlan(p, { accounts, transactions: NO_TX }, '2026-07-23')
+    expect(r.totalVariableIncome).toBe(0)
   })
 
   it('ne compte pas les occurrences déjà passées (déjà dans les soldes)', () => {

@@ -113,12 +113,15 @@ function occurrenceDate(flow: FundingFlow, index: number): string {
  * Les occurrences passées sont déjà reflétées dans les soldes des comptes.
  */
 function flowInMonth(flow: FundingFlow, index: number, afterIso: string, throughIso: string): number {
+  const startIndex = monthIndex(flow.date)
   if (flow.recurrence === 'once') {
-    if (monthIndex(flow.date) !== index) return 0
+    if (startIndex !== index) return 0
     return flow.date > afterIso && flow.date <= throughIso ? flow.amount : 0
   }
-  // Mensuel : actif à partir de son mois de départ.
-  if (index < monthIndex(flow.date)) return 0
+  // Récurrent : actif à partir de son mois de départ.
+  if (index < startIndex) return 0
+  // Annuel : uniquement le même mois calendaire que la première occurrence.
+  if (flow.recurrence === 'yearly' && index % 12 !== startIndex % 12) return 0
   const occ = occurrenceDate(flow, index)
   return occ > afterIso && occ <= throughIso ? flow.amount : 0
 }

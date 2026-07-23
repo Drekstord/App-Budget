@@ -67,7 +67,7 @@ export function FlowRows({ rows, onChange, showKind, addLabel, defaultDate }: Fl
             </div>
             <div className="field" style={{ margin: 0 }}>
               <label htmlFor={`fl-date-${row.id}`}>
-                {row.recurrence === 'monthly' ? 'À partir du' : 'Date'}
+                {row.recurrence === 'once' ? 'Date' : 'À partir du'}
               </label>
               <input
                 id={`fl-date-${row.id}`}
@@ -86,6 +86,7 @@ export function FlowRows({ rows, onChange, showKind, addLabel, defaultDate }: Fl
                 onChange={(e) => update(row.id, { recurrence: e.target.value as FundingRecurrence })}
               >
                 <option value="monthly">Chaque mois</option>
+                <option value="yearly">Chaque année</option>
                 <option value="once">Une seule fois</option>
               </select>
             </div>
