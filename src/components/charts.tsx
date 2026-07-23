@@ -7,16 +7,20 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Line,
+  LineChart,
   Pie,
   PieChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts'
-import { CHART_INK, slotColor } from '../theme.ts'
+import { CHART_INK, slotColor, STATUS } from '../theme.ts'
 import { formatEUR, formatEURCompact } from '../domain/money.ts'
 import type { CategorySlice, BudgetStatus, PeriodSeriesPoint } from '../domain/stats.ts'
+import type { FundingResult } from '../domain/funding.ts'
 
 type Mode = 'light' | 'dark'
 
@@ -292,6 +296,117 @@ export function BudgetVsActual({ statuses, mode }: { statuses: BudgetStatus[]; m
                   <th scope="row">{s.category.name}</th>
                   <td className="num">{formatEUR(s.budget.monthlyAmount)}</td>
                   <td className="num">{formatEUR(s.spent)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </>
+  )
+}
+
+export function FundingChart({ result, mode }: { result: FundingResult; mode: Mode }) {
+  const ink = CHART_INK[mode]
+  const fixedColor = slotColor(1, mode)
+  const variableColor = slotColor(2, mode)
+  const hasVariable = result.totalVariableIncome > 0
+  const data = result.timeline.map((p) => ({
+    label: p.label,
+    'Solde projeté': p.projectedFixed / 100,
+    'Avec revenus variables': p.projectedWithVariable / 100,
+  }))
+  const target = result.targetAmount / 100
+  return (
+    <>
+      <div
+        role="img"
+        aria-label={`Trajectoire du solde mobilisable jusqu'à l'échéance, objectif ${formatEUR(result.targetAmount)} (tableau détaillé ci-dessous)`}
+      >
+        <ResponsiveContainer width="100%" height={240}>
+          <LineChart data={data} margin={{ top: 8, right: 12, left: 8, bottom: 0 }}>
+            <CartesianGrid vertical={false} stroke={ink.grid} />
+            <XAxis
+              dataKey="label"
+              tick={{ fill: ink.muted, fontSize: 12 }}
+              axisLine={{ stroke: ink.axis }}
+              tickLine={false}
+            />
+            <YAxis
+              tick={{ fill: ink.muted, fontSize: 12 }}
+              tickFormatter={(v: number) => formatEURCompact(v * 100)}
+              axisLine={false}
+              tickLine={false}
+              width={64}
+            />
+            <Tooltip
+              formatter={(value) => formatEUR(Math.round(Number(value) * 100))}
+              contentStyle={tooltipStyle(mode)}
+            />
+            <ReferenceLine
+              y={target}
+              stroke={STATUS.critical}
+              strokeDasharray="5 4"
+              label={{ value: 'Objectif', position: 'insideTopRight', fill: ink.muted, fontSize: 11 }}
+            />
+            {hasVariable && (
+              <Line
+                type="monotone"
+                dataKey="Avec revenus variables"
+                stroke={variableColor}
+                strokeWidth={2}
+                strokeDasharray="4 3"
+                dot={false}
+                isAnimationActive={false}
+              />
+            )}
+            <Line
+              type="monotone"
+              dataKey="Solde projeté"
+              stroke={fixedColor}
+              strokeWidth={2}
+              dot={{ r: 3, fill: fixedColor }}
+              isAnimationActive={false}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+      <ul className="legend">
+        <li>
+          <span className="swatch" style={{ background: fixedColor }} aria-hidden="true" />
+          Solde projeté (revenus fixes)
+        </li>
+        {hasVariable && (
+          <li>
+            <span className="swatch" style={{ background: variableColor }} aria-hidden="true" />
+            Avec revenus variables
+          </li>
+        )}
+        <li>
+          <span className="swatch" style={{ background: STATUS.critical }} aria-hidden="true" />
+          Objectif à atteindre
+        </li>
+      </ul>
+      <details className="data-table">
+        <summary>Voir les données en tableau</summary>
+        <div className="table-wrap">
+          <table className="data">
+            <caption className="visually-hidden">Solde projeté par mois</caption>
+            <thead>
+              <tr>
+                <th scope="col">Mois</th>
+                <th scope="col" className="num">Revenus</th>
+                <th scope="col" className="num">Dépenses</th>
+                <th scope="col" className="num">Solde projeté</th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.timeline.map((p) => (
+                <tr key={p.monthKey}>
+                  <th scope="row">{p.label}</th>
+                  <td className="num">{formatEUR(p.fixedIncome + p.variableIncome)}</td>
+                  <td className="num">{formatEUR(p.expenseEvents)}</td>
+                  <td className="num">{formatEUR(p.projectedFixed)}</td>
                 </tr>
               ))}
             </tbody>

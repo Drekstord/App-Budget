@@ -743,6 +743,69 @@ table.data th.num {
   }
 }
 
+/* ---------- Plans de financement ---------- */
+
+.plan-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+.plan-badge {
+  align-self: flex-start;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.rule-row {
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--grid);
+}
+
+.rule-row:last-child {
+  border-bottom: none;
+}
+
+.rule-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.rule-move {
+  display: flex;
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
+
+.rule-body {
+  margin: 0.5rem 0 0 1.9rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--surface-2);
+  border-radius: 10px;
+  font-size: 0.9rem;
+}
+
+.flow-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.flow-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  background: var(--surface-2);
+}
+
 /* ---------- Scan de ticket ---------- */
 
 .scan-progress {

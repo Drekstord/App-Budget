@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { to: '/', label: 'Accueil', icon: '📊' },
   { to: '/transactions', label: 'Opérations', icon: '🧾' },
   { to: '/budgets', label: 'Budgets', icon: '🎯' },
+  { to: '/plans', label: 'Projets', icon: '🧮' },
   { to: '/comptes', label: 'Comptes', icon: '🏦' },
   { to: '/reglages', label: 'Réglages', icon: '⚙️' },
 ]
@@ -17,6 +18,14 @@ const TITLES: Record<string, string> = {
   '/comptes': 'Comptes',
   '/categories': 'Catégories',
   '/reglages': 'Réglages',
+}
+
+function titleFor(pathname: string): string {
+  if (pathname === '/plans') return 'Plans de financement'
+  if (pathname === '/plans/nouveau') return 'Nouveau plan'
+  if (pathname.startsWith('/plans/') && pathname.endsWith('/modifier')) return 'Modifier le plan'
+  if (pathname.startsWith('/plans/')) return 'Plan de financement'
+  return TITLES[pathname] ?? 'App Budget'
 }
 
 export function Layout() {
@@ -38,7 +47,7 @@ export function Layout() {
       </nav>
       <div className="app-content">
         <header className="app-header">
-          <h1>{TITLES[pathname] ?? 'App Budget'}</h1>
+          <h1>{titleFor(pathname)}</h1>
           <button
             type="button"
             className="icon-btn"

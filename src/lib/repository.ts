@@ -11,11 +11,17 @@ import {
   type BaseEntity,
   type Budget,
   type Category,
+  type FundingPlan,
   type Settings,
   type Transaction,
 } from '../domain/types.ts'
 
-export type EntityTableName = 'accounts' | 'categories' | 'transactions' | 'budgets'
+export type EntityTableName =
+  | 'accounts'
+  | 'categories'
+  | 'transactions'
+  | 'budgets'
+  | 'fundingPlans'
 
 const META_SALT = 'salt'
 const META_CHECK = 'check'
@@ -137,6 +143,7 @@ export class EncryptedRepository {
       categories: [],
       transactions: [],
       budgets: [],
+      fundingPlans: [],
       settings: { ...DEFAULT_SETTINGS },
     }
     for (const record of records) {
@@ -153,6 +160,9 @@ export class EncryptedRepository {
           break
         case 'budgets':
           data.budgets.push(value as Budget)
+          break
+        case 'fundingPlans':
+          data.fundingPlans.push(value as FundingPlan)
           break
         case 'settings':
           data.settings = { ...DEFAULT_SETTINGS, ...(value as Settings) }
@@ -175,7 +185,13 @@ export class EncryptedRepository {
   /** Restauration complète (import de sauvegarde) : remplace tout le contenu. */
   async replaceAll(data: AppData): Promise<void> {
     await this.db.vault.clear()
-    const tables: EntityTableName[] = ['accounts', 'categories', 'transactions', 'budgets']
+    const tables: EntityTableName[] = [
+      'accounts',
+      'categories',
+      'transactions',
+      'budgets',
+      'fundingPlans',
+    ]
     for (const table of tables) {
       for (const entity of data[table]) {
         await this.put(table, entity)

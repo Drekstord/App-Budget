@@ -53,6 +53,47 @@ export interface Budget extends BaseEntity {
   monthlyAmount: number
 }
 
+// --- Plans de financement (amortissement d'une grosse dépense) ---------------
+
+/** Règle de mobilisation d'un compte pour un plan. */
+export interface FundingAccountRule {
+  accountId: string
+  /** Ordre de ponction : 0 = servir en premier. */
+  priority: number
+  /** Montant à préserver sur ce compte, en centimes (0 = aucun). */
+  keepMin: number
+  /** Ne jamais ponctionner ce compte (protection totale). */
+  excluded: boolean
+}
+
+export type FundingFlowKind = 'fixed' | 'variable'
+export type FundingRecurrence = 'once' | 'monthly'
+
+/** Une entrée ou une sortie d'argent prévue dans un plan. */
+export interface FundingFlow {
+  id: string
+  label: string
+  /** Montant en centimes, toujours positif. */
+  amount: number
+  /** Première (ou unique) occurrence, YYYY-MM-DD. */
+  date: string
+  recurrence: FundingRecurrence
+  /** Pour un revenu : fixe (garanti) ou variable (bonus). Ignoré pour les dépenses. */
+  kind: FundingFlowKind
+}
+
+export interface FundingPlan extends BaseEntity {
+  name: string
+  /** La grosse dépense à financer, en centimes. */
+  targetAmount: number
+  targetLabel: string
+  /** Échéance de la dépense, YYYY-MM-DD. */
+  targetDate: string
+  accountRules: FundingAccountRule[]
+  incomes: FundingFlow[]
+  expenseEvents: FundingFlow[]
+}
+
 export type ThemePreference = 'auto' | 'light' | 'dark'
 
 export interface Settings {
@@ -75,6 +116,7 @@ export interface AppData {
   categories: Category[]
   transactions: Transaction[]
   budgets: Budget[]
+  fundingPlans: FundingPlan[]
   settings: Settings
 }
 
