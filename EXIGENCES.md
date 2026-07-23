@@ -93,6 +93,18 @@ et conseils sur ses habitudes de dépense.
   moyenne », « À ce rythme, ton budget Courses sera dépassé le 22 », suggestions
   d'économie sur les catégories récurrentes en hausse, etc.
 
+### RF-7bis — Plans de financement (amortissement d'une grosse dépense)
+- **RF-7bis.1** Créer un plan pour une dépense future : motif, montant, échéance.
+- **RF-7bis.2** Déclarer les comptes mobilisables, leur ordre de priorité de
+  ponction, un montant à préserver par compte et/ou une exclusion totale
+  (« ne pas toucher à cette épargne »).
+- **RF-7bis.3** Déclarer les revenus futurs (fixes garantis / variables bonus)
+  et les événements de dépense à venir (loyer, vacances…), ponctuels ou mensuels.
+- **RF-7bis.4** Calculer localement un plan : mobilisable immédiat et allocation
+  par compte selon les priorités, épargne mensuelle à constituer, faisabilité à
+  l'échéance (avec/sans revenus variables), trajectoire de trésorerie mensuelle
+  et alertes de tension. Les revenus variables ne sont jamais comptés comme acquis.
+
 ### RF-8 — Import / Export
 - **RF-8.1** Export complet des données en JSON (sauvegarde) et export des
   transactions en CSV.

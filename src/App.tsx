@@ -7,6 +7,9 @@ import { LockPage } from './pages/LockPage.tsx'
 import { DashboardPage } from './pages/DashboardPage.tsx'
 import { TransactionsPage } from './pages/TransactionsPage.tsx'
 import { BudgetsPage } from './pages/BudgetsPage.tsx'
+import { FundingPage } from './pages/FundingPage.tsx'
+import { FundingEditorPage } from './pages/FundingEditorPage.tsx'
+import { FundingDetailPage } from './pages/FundingDetailPage.tsx'
 import { AccountsPage } from './pages/AccountsPage.tsx'
 import { CategoriesPage } from './pages/CategoriesPage.tsx'
 import { SettingsPage } from './pages/SettingsPage.tsx'
@@ -84,6 +87,10 @@ export default function App() {
         <Route index element={<DashboardPage />} />
         <Route path="transactions" element={<TransactionsPage />} />
         <Route path="budgets" element={<BudgetsPage />} />
+        <Route path="plans" element={<FundingPage />} />
+        <Route path="plans/nouveau" element={<FundingEditorPage />} />
+        <Route path="plans/:id" element={<FundingDetailPage />} />
+        <Route path="plans/:id/modifier" element={<FundingEditorPage />} />
         <Route path="comptes" element={<AccountsPage />} />
         <Route path="categories" element={<CategoriesPage />} />
         <Route path="reglages" element={<SettingsPage />} />

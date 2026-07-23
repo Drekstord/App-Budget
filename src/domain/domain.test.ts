@@ -61,6 +61,7 @@ function appData(overrides: Partial<AppData> = {}): AppData {
     categories: [],
     transactions: [],
     budgets: [],
+    fundingPlans: [],
     settings: { ...DEFAULT_SETTINGS },
     ...overrides,
   }

@@ -20,6 +20,7 @@ import {
   type BaseEntity,
   type Budget,
   type Category,
+  type FundingPlan,
   type Settings,
   type Transaction,
 } from '../domain/types.ts'
@@ -32,6 +33,10 @@ type CategoryInput = Pick<Category, 'name' | 'kind' | 'parentId' | 'icon' | 'col
 type TransactionInput = Pick<
   Transaction,
   'type' | 'amount' | 'date' | 'accountId' | 'toAccountId' | 'categoryId' | 'note' | 'payee'
+>
+type FundingPlanInput = Pick<
+  FundingPlan,
+  'name' | 'targetAmount' | 'targetLabel' | 'targetDate' | 'accountRules' | 'incomes' | 'expenseEvents'
 >
 
 interface AppState {
@@ -59,6 +64,11 @@ interface AppState {
   deleteCategory: (id: string, reassignToId: string | null) => Promise<void>
 
   setBudget: (categoryId: string, monthlyAmount: number | null) => Promise<void>
+
+  addFundingPlan: (input: FundingPlanInput) => Promise<FundingPlan>
+  updateFundingPlan: (id: string, patch: Partial<FundingPlanInput>) => Promise<void>
+  deleteFundingPlan: (id: string) => Promise<void>
+
   updateSettings: (patch: Partial<Settings>) => Promise<void>
   importData: (data: AppData) => Promise<void>
 }
@@ -129,6 +139,7 @@ export const useStore = create<AppState>()((set, get) => {
         categories,
         transactions: [],
         budgets: [],
+        fundingPlans: [],
         settings: { ...DEFAULT_SETTINGS, defaultAccountId: account.id },
       }
       await repo.replaceAll(data)
@@ -275,6 +286,27 @@ export const useStore = create<AppState>()((set, get) => {
         const budget: Budget = { ...stamp(), categoryId, monthlyAmount }
         await persist('budgets', budget, (list) => [...list, budget])
       }
+    },
+
+    async addFundingPlan(input) {
+      const plan: FundingPlan = { ...stamp(), ...input }
+      await persist('fundingPlans', plan, (list) => [...list, plan])
+      return plan
+    },
+
+    async updateFundingPlan(id, patch) {
+      const { data } = requireSession(get())
+      const existing = data.fundingPlans.find((p) => p.id === id)
+      if (!existing) return
+      const updated = touch(existing, patch as Partial<FundingPlan>)
+      await persist('fundingPlans', updated, (list) =>
+        list.map((p) => (p.id === id ? updated : p)),
+      )
+    },
+
+    async deleteFundingPlan(id) {
+      const { data } = requireSession(get())
+      await softDelete('fundingPlans', data.fundingPlans, id)
     },
 
     async updateSettings(patch) {
