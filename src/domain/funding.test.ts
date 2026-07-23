@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computeFundingPlan } from './funding.ts'
+import { computeFundingPlan, computeFundingPlans } from './funding.ts'
 import {
   stamp,
   type Account,
@@ -124,6 +124,48 @@ describe('computeFundingPlan — allocation et priorités', () => {
     expect(courant.allocated).toBe(250000)
     expect(courant.fromOverdraft).toBe(0) // le solde de 3 000 € suffit
     expect(r.warnings.some((w) => w.id === 'overdraft')).toBe(false)
+  })
+})
+
+describe('computeFundingPlans — projets conscients les uns des autres', () => {
+  it('le projet le plus urgent se sert en premier, l’autre voit le reste', () => {
+    const accounts = [account('courant', 300000, 'Courant')] // 3 000 € partagés
+    const urgent = plan({
+      id: 'urgent',
+      name: 'Urgent',
+      targetAmount: 200000,
+      targetDate: '2026-09-15',
+      accountRules: [rule('courant', 0)],
+    })
+    const later = plan({
+      id: 'later',
+      name: 'Plus tard',
+      targetAmount: 200000,
+      targetDate: '2026-12-15',
+      accountRules: [rule('courant', 0)],
+    })
+    const data = { accounts, transactions: NO_TX, fundingPlans: [later, urgent] }
+    const results = computeFundingPlans(data, '2026-07-23')
+
+    // Traités par échéance : Urgent (sept.) d'abord.
+    expect(results.map((r) => r.plan.id)).toEqual(['urgent', 'later'])
+    const urgentRes = results[0].result
+    const laterRes = results[1].result
+    // Urgent mobilise 2 000 € ; il reste 1 000 € pour l'autre.
+    expect(urgentRes.drawableNow).toBe(300000)
+    expect(urgentRes.coveredNow).toBe(200000)
+    expect(laterRes.reservedByOtherPlans).toBe(200000)
+    expect(laterRes.drawableNow).toBe(100000) // 3 000 − 2 000 réservés
+    expect(laterRes.aheadPlanNames).toContain('Urgent')
+  })
+
+  it('ne double-compte jamais l’argent partagé entre projets', () => {
+    const accounts = [account('courant', 500000, 'Courant')]
+    const a = plan({ id: 'a', name: 'A', targetAmount: 400000, targetDate: '2026-08-15', accountRules: [rule('courant', 0)] })
+    const b = plan({ id: 'b', name: 'B', targetAmount: 400000, targetDate: '2026-10-15', accountRules: [rule('courant', 0)] })
+    const results = computeFundingPlans({ accounts, transactions: NO_TX, fundingPlans: [a, b] }, '2026-07-23')
+    const totalCovered = results.reduce((s, r) => s + r.result.coveredNow, 0)
+    expect(totalCovered).toBe(500000) // jamais plus que les 5 000 € réels
   })
 })
 

@@ -1,9 +1,8 @@
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.ts'
-import { alive } from '../domain/types.ts'
 import { formatEUR } from '../domain/money.ts'
 import { todayISO } from '../domain/periods.ts'
-import { computeFundingPlan, type Feasibility } from '../domain/funding.ts'
+import { computeFundingPlans, type Feasibility } from '../domain/funding.ts'
 
 const BADGE: Record<Feasibility, { label: string; cls: string }> = {
   covered_now: { label: 'Finançable maintenant', cls: 'notice-good' },
@@ -18,7 +17,9 @@ export function FundingPage() {
   const data = useStore((s) => s.data)
   const navigate = useNavigate()
   if (!data) return null
-  const plans = alive(data.fundingPlans).sort((a, b) => a.targetDate.localeCompare(b.targetDate))
+  // Plans conscients les uns des autres, dans l'ordre des échéances.
+  const plans = computeFundingPlans(data, todayISO())
+  const totalReserved = plans.reduce((sum, p) => sum + p.result.coveredNow, 0)
 
   return (
     <div className="stack">
@@ -27,14 +28,24 @@ export function FundingPage() {
         les dépenses prévues, et obtiens un plan pour y faire face.
       </p>
 
+      {plans.length > 1 && (
+        <p className="notice notice-info" style={{ margin: 0 }}>
+          <span aria-hidden="true">🔗</span>
+          <span>
+            Tes {plans.length} projets partagent la même trésorerie. Les plus urgents (échéance la
+            plus proche) se servent en premier ; les suivants tiennent compte de ce qui reste.
+            {totalReserved > 0 && ` Déjà engagé au total : ${formatEUR(totalReserved)}.`}
+          </span>
+        </p>
+      )}
+
       {plans.length === 0 ? (
         <div className="empty-state">
           <p>Aucun plan pour l’instant.</p>
           <p>Crée ton premier plan de financement avec le bouton +.</p>
         </div>
       ) : (
-        plans.map((plan) => {
-          const result = computeFundingPlan(plan, data, todayISO())
+        plans.map(({ plan, result }) => {
           const badge = BADGE[result.feasibility]
           return (
             <button
@@ -59,6 +70,15 @@ export function FundingPage() {
                 Mobilisable maintenant : <strong>{formatEUR(result.drawableNow)}</strong>
                 {result.shortfallNow > 0 && result.monthsRemaining > 0 && (
                   <> · à épargner : {formatEUR(result.requiredMonthlySaving)}/mois</>
+                )}
+                {result.reservedByOtherPlans > 0 && (
+                  <>
+                    <br />
+                    <span style={{ color: 'var(--muted)' }}>
+                      après {formatEUR(result.reservedByOtherPlans)} réservés par un projet plus
+                      urgent
+                    </span>
+                  </>
                 )}
               </div>
             </button>

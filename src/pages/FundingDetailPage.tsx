@@ -3,7 +3,7 @@ import { useStore } from '../store/useStore.ts'
 import { useResolvedTheme } from '../theme.ts'
 import { formatEUR } from '../domain/money.ts'
 import { todayISO } from '../domain/periods.ts'
-import { computeFundingPlan, type Feasibility } from '../domain/funding.ts'
+import { computeFundingPlans, type Feasibility } from '../domain/funding.ts'
 import { FundingChart } from '../components/charts.tsx'
 
 const SEVERITY_ICONS = { critical: '⛔', warning: '⚠️', info: '💡', good: '✅' } as const
@@ -25,8 +25,9 @@ export function FundingDetailPage() {
   const mode = useResolvedTheme()
 
   if (!data) return null
-  const plan = data.fundingPlans.find((p) => p.id === id && !p.deletedAt)
-  if (!plan) {
+  // Calcul conscient des autres projets (réservations par échéance).
+  const entry = computeFundingPlans(data, todayISO()).find((p) => p.plan.id === id)
+  if (!entry) {
     return (
       <div className="empty-state">
         <p>Ce plan n’existe plus.</p>
@@ -36,8 +37,7 @@ export function FundingDetailPage() {
       </div>
     )
   }
-
-  const result = computeFundingPlan(plan, data, todayISO())
+  const { plan, result } = entry
   const allocated = result.draws.filter((d) => d.allocated > 0)
 
   const remove = async () => {
@@ -97,6 +97,18 @@ export function FundingDetailPage() {
         </div>
       </div>
 
+      {result.reservedByOtherPlans > 0 && (
+        <p className="notice notice-info" style={{ margin: 0 }}>
+          <span aria-hidden="true">🔗</span>
+          <span>
+            {formatEUR(result.reservedByOtherPlans)} de ta trésorerie sont déjà réservés par un
+            projet à l’échéance plus proche
+            {result.aheadPlanNames.length > 0 && ` (${result.aheadPlanNames.join(', ')})`}. Ce plan
+            ne compte que sur ce qui reste.
+          </span>
+        </p>
+      )}
+
       {result.warnings.length > 0 && (
         <section aria-label="Analyse du plan" className="stack" style={{ gap: '0.5rem' }}>
           {result.warnings.map((w) => (
@@ -139,6 +151,7 @@ export function FundingDetailPage() {
                     <br />
                     <span className="item-sub">
                       solde {formatEUR(d.balance)}
+                      {d.reservedByOthers > 0 && ` · ${formatEUR(d.reservedByOthers)} réservés ailleurs`}
                       {d.keepMin > 0 && ` · préserver ${formatEUR(d.keepMin)}`}
                       {d.fromOverdraft > 0 && ` · dont ${formatEUR(d.fromOverdraft)} en découvert`}
                     </span>
