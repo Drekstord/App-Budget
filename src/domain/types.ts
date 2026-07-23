@@ -71,7 +71,7 @@ export interface FundingAccountRule {
 }
 
 export type FundingFlowKind = 'fixed' | 'variable'
-export type FundingRecurrence = 'once' | 'monthly'
+export type FundingRecurrence = 'once' | 'monthly' | 'yearly'
 
 /** Une entrée ou une sortie d'argent prévue dans un plan. */
 export interface FundingFlow {
