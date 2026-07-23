@@ -140,6 +140,7 @@ export function FundingDetailPage() {
                     <span className="item-sub">
                       solde {formatEUR(d.balance)}
                       {d.keepMin > 0 && ` · préserver ${formatEUR(d.keepMin)}`}
+                      {d.fromOverdraft > 0 && ` · dont ${formatEUR(d.fromOverdraft)} en découvert`}
                     </span>
                   </span>
                   <span className="amount">{formatEUR(d.allocated)}</span>

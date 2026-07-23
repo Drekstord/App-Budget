@@ -28,7 +28,7 @@ import { defaultAccount, defaultCategories } from '../domain/defaults.ts'
 
 export type AppPhase = 'loading' | 'setup' | 'locked' | 'unlocked'
 
-type AccountInput = Pick<Account, 'name' | 'type' | 'initialBalance' | 'icon'>
+type AccountInput = Pick<Account, 'name' | 'type' | 'initialBalance' | 'overdraft' | 'icon'>
 type CategoryInput = Pick<Category, 'name' | 'kind' | 'parentId' | 'icon' | 'colorSlot'>
 type TransactionInput = Pick<
   Transaction,

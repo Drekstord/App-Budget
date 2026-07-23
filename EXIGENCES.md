@@ -97,7 +97,9 @@ et conseils sur ses habitudes de dépense.
 - **RF-7bis.1** Créer un plan pour une dépense future : motif, montant, échéance.
 - **RF-7bis.2** Déclarer les comptes mobilisables, leur ordre de priorité de
   ponction, un montant à préserver par compte et/ou une exclusion totale
-  (« ne pas toucher à cette épargne »).
+  (« ne pas toucher à cette épargne »). Un compte peut porter un **découvert
+  autorisé** (sans frais) qui augmente sa trésorerie mobilisable ; son usage est
+  activable/désactivable par plan.
 - **RF-7bis.3** Déclarer les revenus futurs (fixes garantis / variables bonus)
   et les événements de dépense à venir (loyer, vacances…), ponctuels ou mensuels.
 - **RF-7bis.4** Calculer localement un plan : mobilisable immédiat et allocation

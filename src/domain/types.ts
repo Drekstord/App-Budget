@@ -16,6 +16,8 @@ export interface Account extends BaseEntity {
   type: AccountType
   /** Solde initial en centimes (peut être négatif). */
   initialBalance: number
+  /** Découvert autorisé sans frais, en centimes (≥ 0). Le solde peut descendre jusqu'à −overdraft. */
+  overdraft: number
   icon: string
   archived: boolean
 }
@@ -64,6 +66,8 @@ export interface FundingAccountRule {
   keepMin: number
   /** Ne jamais ponctionner ce compte (protection totale). */
   excluded: boolean
+  /** Autoriser à puiser dans le découvert autorisé de ce compte pour ce plan. */
+  useOverdraft?: boolean
 }
 
 export type FundingFlowKind = 'fixed' | 'variable'

@@ -33,6 +33,7 @@ export function AccountsPage() {
   const [name, setName] = useState('')
   const [type, setType] = useState<AccountType>('checking')
   const [initialBalance, setInitialBalance] = useState('0')
+  const [overdraft, setOverdraft] = useState('0')
   const [error, setError] = useState('')
 
   if (!data) return null
@@ -43,12 +44,14 @@ export function AccountsPage() {
     setName(account?.name ?? '')
     setType(account?.type ?? 'checking')
     setInitialBalance(account ? centsToInput(account.initialBalance) : '0')
+    setOverdraft(account?.overdraft ? centsToInput(account.overdraft) : '0')
     setError('')
     setOpen(true)
   }
 
   const save = async () => {
     const cents = parseAmountToCents(initialBalance)
+    const overdraftCents = parseAmountToCents(overdraft)
     if (!name.trim()) {
       setError('Donne un nom au compte.')
       return
@@ -57,13 +60,24 @@ export function AccountsPage() {
       setError('Solde initial invalide.')
       return
     }
+    if (overdraftCents === null || overdraftCents < 0) {
+      setError('Découvert autorisé invalide (0 si aucun).')
+      return
+    }
     if (editing) {
-      await updateAccount(editing.id, { name: name.trim(), type, initialBalance: cents, icon: TYPE_ICONS[type] })
+      await updateAccount(editing.id, {
+        name: name.trim(),
+        type,
+        initialBalance: cents,
+        overdraft: overdraftCents,
+        icon: TYPE_ICONS[type],
+      })
     } else {
       const account = await addAccount({
         name: name.trim(),
         type,
         initialBalance: cents,
+        overdraft: overdraftCents,
         icon: TYPE_ICONS[type],
       })
       if (!data.settings.defaultAccountId) {
@@ -105,7 +119,10 @@ export function AccountsPage() {
                 )}
               </span>
               <br />
-              <span className="item-sub">{TYPE_LABELS[a.type]}</span>
+              <span className="item-sub">
+                {TYPE_LABELS[a.type]}
+                {a.overdraft > 0 && ` · découvert ${formatEUR(a.overdraft)}`}
+              </span>
             </span>
             <span className="amount">{formatEUR(accountBalance(a, data.transactions))}</span>
             <button
@@ -162,6 +179,20 @@ export function AccountsPage() {
               value={initialBalance}
               onChange={(e) => setInitialBalance(e.target.value)}
             />
+          </div>
+          <div className="field">
+            <label htmlFor="acc-overdraft">Découvert autorisé (€)</label>
+            <input
+              id="acc-overdraft"
+              inputMode="decimal"
+              value={overdraft}
+              onChange={(e) => setOverdraft(e.target.value)}
+              placeholder="0"
+            />
+            <p className="chart-note" style={{ margin: '0.3rem 0 0' }}>
+              Montant jusqu’auquel ce compte peut passer en négatif sans frais. Utilisé par les
+              plans de financement comme trésorerie mobilisable. 0 si aucun.
+            </p>
           </div>
           {editing && (
             <div className="field">

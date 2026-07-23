@@ -9,8 +9,17 @@ import {
   type Transaction,
 } from './types.ts'
 
-function account(id: string, initialBalance: number, name = id): Account {
-  return { ...stamp(), id, name, type: 'checking', initialBalance, icon: '🏦', archived: false }
+function account(id: string, initialBalance: number, name = id, overdraft = 0): Account {
+  return {
+    ...stamp(),
+    id,
+    name,
+    type: 'checking',
+    initialBalance,
+    overdraft,
+    icon: '🏦',
+    archived: false,
+  }
 }
 
 function rule(accountId: string, priority: number, extra: Partial<FundingAccountRule> = {}): FundingAccountRule {
@@ -82,6 +91,39 @@ describe('computeFundingPlan — allocation et priorités', () => {
     const r = computeFundingPlan(p, { accounts, transactions: NO_TX }, '2026-07-23')
     expect(r.draws.find((d) => d.accountId === 'epargne')!.drawable).toBe(0)
     expect(r.drawableNow).toBe(100000)
+  })
+
+  it('inclut le découvert autorisé dans le mobilisable', () => {
+    // Courant 500 € + 2 000 € de découvert autorisé.
+    const accounts = [account('courant', 50000, 'Courant', 200000)]
+    const p = plan({ targetAmount: 250000, accountRules: [rule('courant', 0)] })
+    const r = computeFundingPlan(p, { accounts, transactions: NO_TX }, '2026-07-23')
+    const courant = r.draws.find((d) => d.accountId === 'courant')!
+    expect(courant.drawable).toBe(250000) // 500 + 2 000 de découvert
+    expect(courant.allocated).toBe(250000)
+    expect(courant.fromOverdraft).toBe(200000) // 2 000 € pris sur le découvert
+    expect(r.warnings.some((w) => w.id === 'overdraft')).toBe(true)
+  })
+
+  it('ignore le découvert si le plan le désactive', () => {
+    const accounts = [account('courant', 50000, 'Courant', 200000)]
+    const p = plan({
+      targetAmount: 250000,
+      accountRules: [rule('courant', 0, { useOverdraft: false })],
+    })
+    const r = computeFundingPlan(p, { accounts, transactions: NO_TX }, '2026-07-23')
+    expect(r.draws.find((d) => d.accountId === 'courant')!.drawable).toBe(50000)
+    expect(r.drawableNow).toBe(50000)
+  })
+
+  it('ne compte pas le découvert comme pris tant que le solde propre suffit', () => {
+    const accounts = [account('courant', 300000, 'Courant', 200000)]
+    const p = plan({ targetAmount: 250000, accountRules: [rule('courant', 0)] })
+    const r = computeFundingPlan(p, { accounts, transactions: NO_TX }, '2026-07-23')
+    const courant = r.draws.find((d) => d.accountId === 'courant')!
+    expect(courant.allocated).toBe(250000)
+    expect(courant.fromOverdraft).toBe(0) // le solde de 3 000 € suffit
+    expect(r.warnings.some((w) => w.id === 'overdraft')).toBe(false)
   })
 })
 

@@ -9,6 +9,7 @@ export function defaultAccount(): Account {
     name: 'Compte courant',
     type: 'checking',
     initialBalance: 0,
+    overdraft: 0,
     icon: '🏦',
     archived: false,
   }
