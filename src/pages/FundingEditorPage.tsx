@@ -12,6 +12,7 @@ interface RuleDraft {
   included: boolean
   keepMin: string
   excluded: boolean
+  useOverdraft: boolean
 }
 
 function toFlowDraft(f: FundingFlow): FlowDraft {
@@ -71,10 +72,17 @@ export function FundingEditorPage() {
         included: true,
         keepMin: r.keepMin ? centsToInput(r.keepMin) : '',
         excluded: r.excluded,
+        useOverdraft: r.useOverdraft !== false,
       }))
     const rest = accounts
       .filter((a) => !existingRules.has(a.id))
-      .map((a) => ({ accountId: a.id, included: !existing, keepMin: '', excluded: false }))
+      .map((a) => ({
+        accountId: a.id,
+        included: !existing,
+        keepMin: '',
+        excluded: false,
+        useOverdraft: true,
+      }))
     return [...ordered, ...rest]
   })
 
@@ -113,6 +121,7 @@ export function FundingEditorPage() {
         priority: i,
         keepMin: r.excluded ? 0 : (parseAmountToCents(r.keepMin) ?? 0),
         excluded: r.excluded,
+        useOverdraft: r.useOverdraft,
       }))
 
     const input = {
@@ -263,6 +272,26 @@ export function FundingEditorPage() {
                             placeholder="0"
                           />
                         </div>
+                      )}
+                      {!rule.excluded && (account.overdraft ?? 0) > 0 && (
+                        <label
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            margin: '0.5rem 0 0',
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            style={{ width: 'auto', minHeight: 'auto' }}
+                            checked={rule.useOverdraft}
+                            onChange={(e) =>
+                              patchRule(rule.accountId, { useOverdraft: e.target.checked })
+                            }
+                          />
+                          Utiliser le découvert autorisé ({formatEUR(account.overdraft)})
+                        </label>
                       )}
                     </div>
                   )}

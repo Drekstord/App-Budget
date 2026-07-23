@@ -26,10 +26,14 @@ export interface AccountDraw {
   keepMin: number
   excluded: boolean
   priority: number
-  /** Mobilisable = excluded ? 0 : max(0, solde − montant à préserver). */
+  /** Découvert autorisé pris en compte pour ce plan (0 si non utilisé). */
+  overdraft: number
+  /** Mobilisable = excluded ? 0 : max(0, solde − à préserver + découvert autorisé). */
   drawable: number
   /** Ponctionné pour couvrir la dépense dès maintenant. */
   allocated: number
+  /** Part de l'allocation prise dans le découvert autorisé (solde passé sous zéro). */
+  fromOverdraft: number
 }
 
 export type Feasibility = 'covered_now' | 'feasible' | 'feasible_variable' | 'infeasible'
@@ -130,7 +134,10 @@ export function computeAccountDraws(
     const account = byId.get(rule.accountId)
     if (!account) continue
     const balance = accountBalance(account, transactions)
-    const drawable = rule.excluded ? 0 : Math.max(0, balance - rule.keepMin)
+    // Découvert autorisé pris en compte si le compte en dispose et que le plan
+    // l'autorise (par défaut oui).
+    const overdraft = rule.useOverdraft === false ? 0 : (account.overdraft ?? 0)
+    const drawable = rule.excluded ? 0 : Math.max(0, balance - rule.keepMin + overdraft)
     draws.push({
       accountId: account.id,
       name: account.name,
@@ -139,8 +146,10 @@ export function computeAccountDraws(
       keepMin: rule.keepMin,
       excluded: rule.excluded,
       priority: rule.priority,
+      overdraft,
       drawable,
       allocated: 0,
+      fromOverdraft: 0,
     })
   }
   return draws.sort((a, b) => a.priority - b.priority)
@@ -155,9 +164,14 @@ export function computeFundingPlan(
 
   // Couverture immédiate : ponction dans l'ordre de priorité, protections respectées.
   let need = plan.targetAmount
+  let overdraftUsed = 0
   for (const draw of draws) {
     const take = Math.min(need, draw.drawable)
     draw.allocated = take
+    // Ce qui dépasse le solde disponible (hors découvert) est pris sur le découvert.
+    const ownAvailable = Math.max(0, draw.balance - draw.keepMin)
+    draw.fromOverdraft = Math.max(0, take - ownAvailable)
+    overdraftUsed += draw.fromOverdraft
     need -= take
   }
   const drawableNow = draws.reduce((sum, d) => sum + d.drawable, 0)
@@ -263,6 +277,14 @@ export function computeFundingPlan(
       id: 'verdict',
       severity: 'critical',
       text: `Objectif hors de portée d'ici l'échéance : il manquerait ${formatCents(stillMissing)}, même en comptant tes revenus variables. Repousse la date, réduis le montant, ou ajoute des revenus.`,
+    })
+  }
+
+  if (overdraftUsed > 0) {
+    warnings.push({
+      id: 'overdraft',
+      severity: 'info',
+      text: `Ce plan mobilise ${formatCents(overdraftUsed)} de découvert autorisé (sans frais) : le compte passera temporairement en négatif.`,
     })
   }
 

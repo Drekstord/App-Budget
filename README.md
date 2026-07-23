@@ -25,7 +25,8 @@ Les exigences complètes sont dans [EXIGENCES.md](EXIGENCES.md).
   évolution sur 6 mois, budget vs réel — avec alternatives tabulaires (RGAA)
 - 💡 Conseils automatiques calculés localement (dérives de dépenses, budgets à risque…)
 - 🧮 **Plans de financement** (amortir une grosse dépense) : déclare la dépense
-  à venir, tes comptes avec leur ordre de priorité et les épargnes à protéger,
+  à venir, tes comptes avec leur ordre de priorité, leur découvert autorisé
+  (sans frais) et les épargnes à protéger,
   tes revenus futurs (fixes/variables) et tes dépenses prévues (loyer, vacances) ;
   l'app calcule un plan expliqué — mobilisable immédiat par compte, épargne
   mensuelle à constituer, faisabilité à l'échéance, trajectoire de trésorerie

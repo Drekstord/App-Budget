@@ -18,6 +18,7 @@ function account(overrides: Partial<Account> = {}): Account {
     name: 'Compte',
     type: 'checking',
     initialBalance: 0,
+    overdraft: 0,
     icon: '🏦',
     archived: false,
     ...overrides,
