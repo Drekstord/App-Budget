@@ -28,7 +28,9 @@ export interface AccountDraw {
   priority: number
   /** Découvert autorisé pris en compte pour ce plan (0 si non utilisé). */
   overdraft: number
-  /** Mobilisable = excluded ? 0 : max(0, solde − à préserver + découvert autorisé). */
+  /** Déjà réservé sur ce compte par des projets plus urgents (échéance plus proche). */
+  reservedByOthers: number
+  /** Mobilisable = excluded ? 0 : max(0, solde − réservé ailleurs − à préserver + découvert). */
   drawable: number
   /** Ponctionné pour couvrir la dépense dès maintenant. */
   allocated: number
@@ -77,6 +79,10 @@ export interface FundingResult {
   requiredMonthlySaving: number
   /** Marge nette moyenne par mois (revenus fixes − événements de dépense). */
   averageMonthlyNet: number
+  /** Total réservé sur les comptes de ce plan par des projets plus urgents. */
+  reservedByOtherPlans: number
+  /** Noms des projets plus urgents qui réservent une partie de sa trésorerie. */
+  aheadPlanNames: string[]
   timeline: TimelinePoint[]
   warnings: FundingWarning[]
 }
@@ -130,6 +136,8 @@ export function computeAccountDraws(
   plan: FundingPlan,
   accounts: Account[],
   transactions: Transaction[],
+  /** Montant déjà réservé par compte par des projets plus urgents. */
+  reserved?: Map<string, number>,
 ): AccountDraw[] {
   const byId = new Map(alive(accounts).map((a) => [a.id, a]))
   const draws: AccountDraw[] = []
@@ -137,10 +145,13 @@ export function computeAccountDraws(
     const account = byId.get(rule.accountId)
     if (!account) continue
     const balance = accountBalance(account, transactions)
+    const reservedByOthers = reserved?.get(account.id) ?? 0
+    // Solde effectif = solde réel diminué de ce que les projets plus urgents ont réservé.
+    const effectiveBalance = balance - reservedByOthers
     // Découvert autorisé pris en compte si le compte en dispose et que le plan
     // l'autorise (par défaut oui).
     const overdraft = rule.useOverdraft === false ? 0 : (account.overdraft ?? 0)
-    const drawable = rule.excluded ? 0 : Math.max(0, balance - rule.keepMin + overdraft)
+    const drawable = rule.excluded ? 0 : Math.max(0, effectiveBalance - rule.keepMin + overdraft)
     draws.push({
       accountId: account.id,
       name: account.name,
@@ -150,6 +161,7 @@ export function computeAccountDraws(
       excluded: rule.excluded,
       priority: rule.priority,
       overdraft,
+      reservedByOthers,
       drawable,
       allocated: 0,
       fromOverdraft: 0,
@@ -162,8 +174,10 @@ export function computeFundingPlan(
   plan: FundingPlan,
   data: Pick<AppData, 'accounts' | 'transactions'>,
   todayIso: string,
+  /** Trésorerie déjà réservée, par compte, par des projets plus urgents. */
+  reserved?: Map<string, number>,
 ): FundingResult {
-  const draws = computeAccountDraws(plan, data.accounts, data.transactions)
+  const draws = computeAccountDraws(plan, data.accounts, data.transactions, reserved)
 
   // Couverture immédiate : ponction dans l'ordre de priorité, protections respectées.
   let need = plan.targetAmount
@@ -171,12 +185,13 @@ export function computeFundingPlan(
   for (const draw of draws) {
     const take = Math.min(need, draw.drawable)
     draw.allocated = take
-    // Ce qui dépasse le solde disponible (hors découvert) est pris sur le découvert.
-    const ownAvailable = Math.max(0, draw.balance - draw.keepMin)
+    // Ce qui dépasse le solde effectif disponible (hors découvert) est pris sur le découvert.
+    const ownAvailable = Math.max(0, draw.balance - draw.reservedByOthers - draw.keepMin)
     draw.fromOverdraft = Math.max(0, take - ownAvailable)
     overdraftUsed += draw.fromOverdraft
     need -= take
   }
+  const reservedByOtherPlans = draws.reduce((sum, d) => sum + d.reservedByOthers, 0)
   const drawableNow = draws.reduce((sum, d) => sum + d.drawable, 0)
   const coveredNow = Math.min(plan.targetAmount, drawableNow)
   const shortfallNow = Math.max(0, plan.targetAmount - drawableNow)
@@ -308,9 +323,59 @@ export function computeFundingPlan(
     missingAmount,
     requiredMonthlySaving,
     averageMonthlyNet,
+    reservedByOtherPlans,
+    aheadPlanNames: [],
     timeline,
     warnings,
   }
+}
+
+export interface PlanWithResult {
+  plan: FundingPlan
+  result: FundingResult
+}
+
+/**
+ * Calcule tous les plans en les rendant conscients les uns des autres : ils sont
+ * traités dans l'ordre des échéances (le plus proche d'abord), et chaque plan
+ * réserve la trésorerie qu'il mobilise, si bien que les plans plus lointains ne
+ * voient que ce qui reste. Pas de double comptage de l'argent partagé.
+ */
+export function computeFundingPlans(
+  data: Pick<AppData, 'accounts' | 'transactions' | 'fundingPlans'>,
+  todayIso: string,
+): PlanWithResult[] {
+  const plans = alive(data.fundingPlans)
+    .slice()
+    .sort((a, b) => a.targetDate.localeCompare(b.targetDate) || a.createdAt.localeCompare(b.createdAt))
+
+  const reserved = new Map<string, number>()
+  const contributors = new Map<string, string[]>()
+  const results: PlanWithResult[] = []
+
+  for (const plan of plans) {
+    const result = computeFundingPlan(plan, data, todayIso, reserved)
+
+    // Noms des projets plus urgents qui réservent sur les comptes de ce plan.
+    const ahead = new Set<string>()
+    for (const draw of result.draws) {
+      if (draw.reservedByOthers > 0) {
+        for (const name of contributors.get(draw.accountId) ?? []) ahead.add(name)
+      }
+    }
+    result.aheadPlanNames = [...ahead]
+    results.push({ plan, result })
+
+    // Ce plan réserve à son tour ce qu'il mobilise pour les plans suivants.
+    for (const draw of result.draws) {
+      if (draw.allocated <= 0) continue
+      reserved.set(draw.accountId, (reserved.get(draw.accountId) ?? 0) + draw.allocated)
+      const list = contributors.get(draw.accountId) ?? []
+      if (!list.includes(plan.name)) list.push(plan.name)
+      contributors.set(draw.accountId, list)
+    }
+  }
+  return results
 }
 
 // Format local minimal (sans dépendre de money.ts pour rester autonome/testable).

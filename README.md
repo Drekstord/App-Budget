@@ -30,7 +30,9 @@ Les exigences complètes sont dans [EXIGENCES.md](EXIGENCES.md).
   tes revenus futurs (fixes/variables) et tes dépenses prévues (loyer, vacances) ;
   l'app calcule un plan expliqué — mobilisable immédiat par compte, épargne
   mensuelle à constituer, faisabilité à l'échéance, trajectoire de trésorerie
-  et points de tension
+  et points de tension. Les projets **partagent la même trésorerie** : traités
+  par ordre d'échéance, les plus urgents se servent en premier et les suivants
+  tiennent compte de ce qui reste (pas de double engagement du même argent)
 - 💾 Export / import de sauvegarde JSON
 - 🌗 Thème clair / sombre, interface conforme RGAA, mois budgétaire personnalisable
 

@@ -106,6 +106,10 @@ et conseils sur ses habitudes de dépense.
   par compte selon les priorités, épargne mensuelle à constituer, faisabilité à
   l'échéance (avec/sans revenus variables), trajectoire de trésorerie mensuelle
   et alertes de tension. Les revenus variables ne sont jamais comptés comme acquis.
+- **RF-7bis.5** Les plans sont conscients les uns des autres : ils partagent la
+  même trésorerie et sont traités par ordre d'échéance (le plus proche d'abord).
+  Chaque plan réserve ce qu'il mobilise ; les plans plus lointains ne comptent que
+  sur le solde restant. Aucun double comptage de l'argent partagé.
 
 ### RF-8 — Import / Export
 - **RF-8.1** Export complet des données en JSON (sauvegarde) et export des
