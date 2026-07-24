@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computeFundingPlan, computeFundingPlans } from './funding.ts'
+import { computeFundingPlan, computeFundingPlans, fundingActionPlan } from './funding.ts'
 import {
   stamp,
   type Account,
@@ -157,6 +157,21 @@ describe('computeFundingPlans — projets conscients les uns des autres', () => 
     expect(laterRes.reservedByOtherPlans).toBe(200000)
     expect(laterRes.drawableNow).toBe(100000) // 3 000 − 2 000 réservés
     expect(laterRes.aheadPlanNames).toContain('Urgent')
+  })
+
+  it('produit une marche à suivre ordonnée par échéance', () => {
+    const accounts = [account('courant', 100000, 'Courant')]
+    const urgent = plan({ id: 'u', name: 'Urgent', targetLabel: 'Urgent', targetAmount: 300000, targetDate: '2026-09-15', accountRules: [rule('courant', 0)] })
+    const later = plan({ id: 'l', name: 'Plus tard', targetLabel: 'Plus tard', targetAmount: 300000, targetDate: '2026-12-15', accountRules: [rule('courant', 0)] })
+    const ap = fundingActionPlan({ accounts, transactions: NO_TX, fundingPlans: [later, urgent] }, '2026-07-23')
+    // Ordonné : Urgent (sept.) d'abord.
+    expect(ap.steps.map((s) => s.planId)).toEqual(['u', 'l'])
+    expect(ap.steps[0].order).toBe(1)
+    // Urgent mobilise 1 000 € maintenant, puis épargne mensuelle et journalière > 0.
+    expect(ap.steps[0].mobilizeNow).toBe(100000)
+    expect(ap.steps[0].monthlySaving).toBeGreaterThan(0)
+    expect(ap.steps[0].dailySaving).toBeGreaterThan(0)
+    expect(ap.totalMonthlySaving).toBe(ap.steps[0].monthlySaving + ap.steps[1].monthlySaving)
   })
 
   it('ne double-compte jamais l’argent partagé entre projets', () => {

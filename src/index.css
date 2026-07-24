@@ -743,6 +743,19 @@ table.data th.num {
   }
 }
 
+ol.steps {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+ol.steps li {
+  padding-left: 0.25rem;
+  line-height: 1.4;
+}
+
 .pill-essential {
   display: inline-block;
   font-size: 0.68rem;

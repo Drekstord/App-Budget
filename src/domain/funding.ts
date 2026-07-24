@@ -335,6 +335,67 @@ export interface PlanWithResult {
   result: FundingResult
 }
 
+function daysBetween(fromIso: string, toIso: string): number {
+  const [fy, fm, fd] = fromIso.split('-').map(Number)
+  const [ty, tm, td] = toIso.split('-').map(Number)
+  return Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(fy, fm - 1, fd)) / 86_400_000)
+}
+
+export interface ActionStep {
+  planId: string
+  label: string
+  targetDate: string
+  order: number
+  /** À mobiliser tout de suite depuis les comptes. */
+  mobilizeNow: number
+  /** À mettre de côté chaque mois d'ici l'échéance. */
+  monthlySaving: number
+  /** Équivalent par jour (pour un repère concret). */
+  dailySaving: number
+  feasibility: Feasibility
+}
+
+export interface ActionPlan {
+  steps: ActionStep[]
+  totalMobilizeNow: number
+  totalMonthlySaving: number
+  totalDailySaving: number
+  anyInfeasible: boolean
+}
+
+/**
+ * « Marche à suivre » concrète sur l'ensemble des projets : quoi mobiliser tout
+ * de suite et combien épargner par mois (et par jour), projet par projet, dans
+ * l'ordre des échéances.
+ */
+export function fundingActionPlan(
+  data: Pick<AppData, 'accounts' | 'transactions' | 'fundingPlans'>,
+  todayIso: string,
+): ActionPlan {
+  const plans = computeFundingPlans(data, todayIso)
+  const steps: ActionStep[] = plans.map(({ plan, result }, i) => {
+    const days = Math.max(1, daysBetween(todayIso, plan.targetDate))
+    const dailySaving = result.shortfallNow > 0 ? Math.ceil(result.shortfallNow / days) : 0
+    return {
+      planId: plan.id,
+      label: plan.targetLabel,
+      targetDate: plan.targetDate,
+      order: i + 1,
+      mobilizeNow: result.coveredNow,
+      monthlySaving: result.requiredMonthlySaving,
+      dailySaving,
+      feasibility: result.feasibility,
+    }
+  })
+  return {
+    steps,
+    totalMobilizeNow: steps.reduce((s, x) => s + x.mobilizeNow, 0),
+    totalMonthlySaving: steps.reduce((s, x) => s + x.monthlySaving, 0),
+    totalDailySaving: steps.reduce((s, x) => s + x.dailySaving, 0),
+    anyInfeasible: steps.some((x) => x.feasibility === 'infeasible'),
+  }
+}
+
 /**
  * Calcule tous les plans en les rendant conscients les uns des autres : ils sont
  * traités dans l'ordre des échéances (le plus proche d'abord), et chaque plan

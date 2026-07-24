@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.ts'
 import { formatEUR } from '../domain/money.ts'
 import { todayISO } from '../domain/periods.ts'
-import { computeFundingPlans, type Feasibility } from '../domain/funding.ts'
+import { computeFundingPlans, fundingActionPlan, type Feasibility } from '../domain/funding.ts'
 
 const BADGE: Record<Feasibility, { label: string; cls: string }> = {
   covered_now: { label: 'Finançable maintenant', cls: 'notice-good' },
@@ -20,6 +20,7 @@ export function FundingPage() {
   // Plans conscients les uns des autres, dans l'ordre des échéances.
   const plans = computeFundingPlans(data, todayISO())
   const totalReserved = plans.reduce((sum, p) => sum + p.result.coveredNow, 0)
+  const action = fundingActionPlan(data, todayISO())
 
   return (
     <div className="stack">
@@ -37,6 +38,38 @@ export function FundingPage() {
             {totalReserved > 0 && ` Déjà engagé au total : ${formatEUR(totalReserved)}.`}
           </span>
         </p>
+      )}
+
+      {action.steps.length > 0 && (
+        <section className="card">
+          <h2>Marche à suivre</h2>
+          <p className="chart-note">
+            Ordre conseillé (échéance la plus proche d’abord)
+            {action.totalMonthlySaving > 0 && (
+              <> · à mettre de côté au total : <strong>{formatEUR(action.totalMonthlySaving)}/mois</strong></>
+            )}
+            .
+          </p>
+          <ol className="steps">
+            {action.steps.map((step) => (
+              <li key={step.planId}>
+                <strong>{step.label}</strong>
+                {step.mobilizeNow > 0 && <> — mobilise {formatEUR(step.mobilizeNow)} maintenant</>}
+                {step.monthlySaving > 0 ? (
+                  <>
+                    {step.mobilizeNow > 0 ? ', puis ' : ' — '}
+                    {formatEUR(step.monthlySaving)}/mois
+                    {step.dailySaving > 0 && <> (≈ {formatEUR(step.dailySaving)}/jour)</>}
+                  </>
+                ) : step.feasibility === 'infeasible' ? (
+                  <> — hors de portée en l’état</>
+                ) : (
+                  <> — déjà couvert</>
+                )}
+              </li>
+            ))}
+          </ol>
+        </section>
       )}
 
       {plans.length === 0 ? (

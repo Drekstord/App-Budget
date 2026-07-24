@@ -110,6 +110,10 @@ et conseils sur ses habitudes de dépense.
   même trésorerie et sont traités par ordre d'échéance (le plus proche d'abord).
   Chaque plan réserve ce qu'il mobilise ; les plans plus lointains ne comptent que
   sur le solde restant. Aucun double comptage de l'argent partagé.
+- **RF-7bis.6** Une « marche à suivre » concrète est proposée : par projet
+  (mobiliser tout de suite tel montant, puis épargner tant par mois et par jour
+  d'ici l'échéance) et en synthèse pour l'ensemble des projets, ordonnée par
+  priorité d'échéance, avec l'effort d'épargne mensuel total.
 
 ### RF-8 — Import / Export
 - **RF-8.1** Export complet des données en JSON (sauvegarde) et export des
