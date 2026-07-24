@@ -98,6 +98,31 @@ export interface FundingPlan extends BaseEntity {
   expenseEvents: FundingFlow[]
 }
 
+// --- Prélèvements : abonnements et prêts -------------------------------------
+
+export type CommitmentKind = 'subscription' | 'loan'
+export type SubscriptionFrequency = 'monthly' | 'yearly'
+
+export interface Subscription extends BaseEntity {
+  kind: CommitmentKind
+  name: string
+  /** Montant d'un prélèvement, en centimes. */
+  amount: number
+  /** Fréquence du prélèvement (un prêt est toujours mensuel). */
+  frequency: SubscriptionFrequency
+  /** Jour de prélèvement dans le mois (1 à 31). */
+  dayOfMonth: number
+  categoryId: string | null
+  /** Indispensable (loyer, assurance…) ou non (loisir…). */
+  essential: boolean
+  /** Compte sur lequel a lieu le prélèvement. */
+  accountId: string | null
+  /** En cours ; permet de mettre en pause sans supprimer. */
+  active: boolean
+  /** Pour un prêt : date de dernière mensualité (YYYY-MM-DD). */
+  endDate: string | null
+}
+
 export type ThemePreference = 'auto' | 'light' | 'dark'
 
 export interface Settings {
@@ -123,6 +148,7 @@ export interface AppData {
   transactions: Transaction[]
   budgets: Budget[]
   fundingPlans: FundingPlan[]
+  subscriptions: Subscription[]
   settings: Settings
 }
 

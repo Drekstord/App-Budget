@@ -15,6 +15,7 @@ const TITLES: Record<string, string> = {
   '/': 'Tableau de bord',
   '/transactions': 'Opérations',
   '/budgets': 'Budgets',
+  '/prelevements': 'Prélèvements',
   '/comptes': 'Comptes',
   '/categories': 'Catégories',
   '/reglages': 'Réglages',

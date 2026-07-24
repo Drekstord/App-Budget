@@ -33,6 +33,10 @@ Les exigences complètes sont dans [EXIGENCES.md](EXIGENCES.md).
   et points de tension. Les projets **partagent la même trésorerie** : traités
   par ordre d'échéance, les plus urgents se servent en premier et les suivants
   tiennent compte de ce qui reste (pas de double engagement du même argent)
+- 💳 **Prélèvements** (abonnements & prêts) : montant, échéance, catégorie,
+  indispensable ou non, compte de prélèvement ; total mensuel, montant à
+  provisionner par compte, comparaison au budget par catégorie, et reste à
+  rembourser d'un prêt jusqu'à sa date de fin
 - 💾 Export / import de sauvegarde JSON
 - 🌗 Thème clair / sombre, interface conforme RGAA, mois budgétaire personnalisable
 

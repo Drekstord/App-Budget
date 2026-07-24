@@ -12,6 +12,7 @@ import {
   expensesByRootCategory,
   periodSeries,
 } from '../domain/stats.ts'
+import { computeCommitmentSummary } from '../domain/subscriptions.ts'
 import { computeAdvice, type AdviceSeverity } from '../domain/advice.ts'
 import { BudgetVsActual, CategoryDonut, MonthlyBars } from '../components/charts.tsx'
 import { TransactionForm } from '../components/TransactionForm.tsx'
@@ -36,6 +37,7 @@ export function DashboardPage() {
   const series = periodSeries(data, 6)
   const statuses = budgetStatuses(data, period)
   const advice = computeAdvice(data)
+  const commitments = computeCommitmentSummary(data, todayISO())
 
   return (
     <div className="stack">
@@ -87,6 +89,22 @@ export function DashboardPage() {
           <Link to="/comptes">Gérer les comptes →</Link>
         </p>
       </section>
+
+      {commitments.activeCount > 0 && (
+        <Link to="/prelevements" className="card" style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+            <div>
+              <div className="kpi-label">Prélèvements mensuels</div>
+              <div className="kpi-value">{formatEUR(commitments.totalMonthly)}</div>
+              <div className="kpi-sub">
+                {commitments.activeCount} abonnement{commitments.activeCount > 1 ? 's' : ''}/prêts ·
+                dont {formatEUR(commitments.essentialMonthly)} indispensables
+              </div>
+            </div>
+            <span aria-hidden="true" style={{ fontSize: '1.5rem' }}>💳</span>
+          </div>
+        </Link>
+      )}
 
       {advice.length > 0 && (
         <section aria-label="Conseils et alertes" className="stack" style={{ gap: '0.5rem' }}>
