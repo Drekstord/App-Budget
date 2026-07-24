@@ -3,7 +3,7 @@ import { useStore } from '../store/useStore.ts'
 import { alive, type Category } from '../domain/types.ts'
 import { centsToInput, formatEUR, formatEURCompact, parseAmountToCents } from '../domain/money.ts'
 import { periodForDate, todayISO } from '../domain/periods.ts'
-import { budgetStatuses } from '../domain/stats.ts'
+import { budgetAllocation, budgetStatuses } from '../domain/stats.ts'
 import { Modal } from '../components/Modal.tsx'
 
 const dayLabel = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long' })
@@ -46,9 +46,50 @@ export function BudgetsPage() {
     setEditingCategory(null)
   }
 
+  const allocation = budgetAllocation(data)
+
   return (
     <div className="stack">
       <p className="chart-note">Période : {period.label}</p>
+
+      {allocation.reference > 0 && (
+        <div className="card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <div>
+              <div className="kpi-label">Reste à attribuer</div>
+              <div
+                className="kpi-value"
+                style={{ color: allocation.remaining < 0 ? 'var(--critical)' : 'var(--good)' }}
+              >
+                {formatEUR(allocation.remaining)}
+              </div>
+            </div>
+            <div style={{ textAlign: 'right', fontSize: '0.82rem', color: 'var(--text-2)' }}>
+              <div>Revenu de référence : {formatEURCompact(allocation.reference)}</div>
+              <div>Déjà budgété : {formatEURCompact(allocation.totalBudgeted)}</div>
+            </div>
+          </div>
+          <div
+            className={`gauge ${allocation.remaining < 0 ? 'gauge-over' : ''}`}
+            style={{ marginTop: '0.6rem' }}
+            role="progressbar"
+            aria-valuenow={Math.min(100, Math.round((allocation.totalBudgeted / allocation.reference) * 100))}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="Part du revenu de référence déjà budgétée"
+          >
+            <span style={{ width: `${Math.min(100, (allocation.totalBudgeted / allocation.reference) * 100)}%` }} />
+          </div>
+          <p className="chart-note" style={{ marginBottom: 0 }}>
+            {allocation.remaining < 0
+              ? `Tu as budgété ${formatEUR(-allocation.remaining)} de plus que ton revenu de référence.`
+              : `Il te reste ${formatEUR(allocation.remaining)} de ton revenu à répartir dans des catégories.`}{' '}
+            {allocation.referenceIsManual
+              ? 'Référence : revenu que tu as fixé dans les réglages.'
+              : 'Référence : moyenne de tes revenus des 3 derniers mois (modifiable dans les réglages).'}
+          </p>
+        </div>
+      )}
 
       {statuses.length === 0 && (
         <div className="empty-state">

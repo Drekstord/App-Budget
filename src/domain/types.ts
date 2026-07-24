@@ -112,6 +112,8 @@ export interface Settings {
   largeExpenseAlert: number
   /** Relayer les alertes en notifications système (si permission accordée). */
   systemNotifications: boolean
+  /** Revenu mensuel de référence pour « reste à attribuer » (centimes ; 0 = moyenne des 3 derniers mois). */
+  monthlyIncomeReference: number
   defaultAccountId: string | null
 }
 
@@ -131,6 +133,7 @@ export const DEFAULT_SETTINGS: Settings = {
   warnThreshold: 80,
   largeExpenseAlert: 10000,
   systemNotifications: false,
+  monthlyIncomeReference: 0,
   defaultAccountId: null,
 }
 

@@ -3,6 +3,7 @@ import { formatEUR, parseAmountToCents, centsToInput } from './money.ts'
 import { inPeriod, lastPeriods, periodForDate, periodProgress, shiftPeriod } from './periods.ts'
 import {
   accountBalance,
+  budgetAllocation,
   budgetStatuses,
   computeKpis,
   expensesByRootCategory,
@@ -194,6 +195,38 @@ describe('stats', () => {
     expect(kpis.periodIncome).toBe(20000)
     expect(kpis.remainingBudget).toBe(15000)
     expect(kpis.savingsRate).toBe(75)
+  })
+})
+
+describe('budgetAllocation (reste à attribuer)', () => {
+  it('utilise le revenu de référence saisi', () => {
+    const cat = category({ id: 'c1' })
+    const data = appData({
+      categories: [cat],
+      budgets: [budget({ categoryId: 'c1', monthlyAmount: 30000 })],
+      settings: { ...DEFAULT_SETTINGS, monthlyIncomeReference: 200000 },
+    })
+    const a = budgetAllocation(data, '2026-07-15')
+    expect(a.referenceIsManual).toBe(true)
+    expect(a.reference).toBe(200000)
+    expect(a.totalBudgeted).toBe(30000)
+    expect(a.remaining).toBe(170000)
+  })
+
+  it('retombe sur la moyenne des 3 mois précédents sans référence saisie', () => {
+    const cat = category({ id: 'c1' })
+    const data = appData({
+      categories: [cat],
+      transactions: [
+        tx({ type: 'income', amount: 200000, date: '2026-04-10' }),
+        tx({ type: 'income', amount: 200000, date: '2026-05-10' }),
+        tx({ type: 'income', amount: 200000, date: '2026-06-10' }),
+        tx({ type: 'income', amount: 999999, date: '2026-07-10' }), // mois courant : exclu
+      ],
+    })
+    const a = budgetAllocation(data, '2026-07-15')
+    expect(a.referenceIsManual).toBe(false)
+    expect(a.reference).toBe(200000)
   })
 })
 
