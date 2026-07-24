@@ -113,6 +113,37 @@ export function periodSeries(data: AppData, nPeriods: number, todayIso?: string)
   }))
 }
 
+/** Revenu mensuel moyen sur les `nMonths` périodes précédant la période courante. */
+export function averageMonthlyIncome(data: AppData, nMonths = 3, todayIso?: string): number {
+  // On exclut la période courante (souvent partielle) : les nMonths d'avant.
+  const series = periodSeries(data, nMonths + 1, todayIso).slice(0, nMonths)
+  if (series.length === 0) return 0
+  return Math.round(series.reduce((sum, p) => sum + p.income, 0) / series.length)
+}
+
+export interface BudgetAllocation {
+  /** Revenu mensuel servant de référence. */
+  reference: number
+  /** Vrai si la référence vient d'un montant saisi, faux si c'est la moyenne. */
+  referenceIsManual: boolean
+  /** Somme des budgets mensuels définis. */
+  totalBudgeted: number
+  /** Reste à attribuer = référence − total budgété (peut être négatif). */
+  remaining: number
+}
+
+export function budgetAllocation(data: AppData, todayIso?: string): BudgetAllocation {
+  const manual = data.settings.monthlyIncomeReference
+  const reference = manual > 0 ? manual : averageMonthlyIncome(data, 3, todayIso)
+  const totalBudgeted = alive(data.budgets).reduce((sum, b) => sum + b.monthlyAmount, 0)
+  return {
+    reference,
+    referenceIsManual: manual > 0,
+    totalBudgeted,
+    remaining: reference - totalBudgeted,
+  }
+}
+
 export type BudgetLevel = 'ok' | 'warning' | 'over'
 
 export interface BudgetStatus {

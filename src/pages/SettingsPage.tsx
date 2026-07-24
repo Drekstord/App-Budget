@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '../store/useStore.ts'
 import type { ThemePreference } from '../domain/types.ts'
+import { centsToInput, parseAmountToCents } from '../domain/money.ts'
 import { backupFileName, BackupError, createBackup, parseBackup } from '../domain/backup.ts'
 import { Modal } from '../components/Modal.tsx'
 
@@ -120,6 +121,23 @@ export function SettingsPage() {
               </option>
             ))}
           </select>
+        </div>
+        <div className="field">
+          <label htmlFor="set-income-ref">Revenu mensuel de référence (€)</label>
+          <input
+            id="set-income-ref"
+            inputMode="decimal"
+            defaultValue={settings.monthlyIncomeReference ? centsToInput(settings.monthlyIncomeReference) : ''}
+            placeholder="laisser vide = moyenne des 3 derniers mois"
+            onBlur={(e) => {
+              const cents = parseAmountToCents(e.target.value)
+              void updateSettings({ monthlyIncomeReference: cents && cents > 0 ? cents : 0 })
+            }}
+          />
+          <p className="chart-note" style={{ marginTop: '0.3rem' }}>
+            Sert au calcul du « reste à attribuer » dans les budgets. Vide = calculé sur la
+            moyenne de tes revenus réels.
+          </p>
         </div>
         <p>
           <Link to="/categories">Gérer les catégories →</Link>

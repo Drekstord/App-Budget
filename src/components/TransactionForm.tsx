@@ -118,8 +118,20 @@ export function TransactionForm({ open, onClose, transaction }: TransactionFormP
     setScanSummary('')
     setError('')
     try {
-      const { recognizeReceipt } = await import('../lib/ocr.ts')
-      const text = await recognizeReceipt(file, setScanProgress)
+      const { recognizeReceipt, OcrError } = await import('../lib/ocr.ts')
+      const text = await recognizeReceipt(file, setScanProgress).catch((e) => {
+        if (e instanceof OcrError) {
+          const messages: Record<string, string> = {
+            engine:
+              'Le moteur de lecture n’a pas pu se charger. Une connexion est nécessaire au tout premier scan : connecte-toi puis réessaie.',
+            timeout:
+              'La lecture a été trop longue et a été interrompue. Réessaie avec une photo plus nette, cadrée sur le ticket.',
+            recognition: 'La lecture a échoué. Réessaie avec une photo nette et bien éclairée.',
+          }
+          throw new Error(messages[e.message] ?? messages.recognition)
+        }
+        throw e
+      })
       const parsed = parseReceipt(text)
       if (!parsed.amountCents && !parsed.merchant && !parsed.date) {
         setScanState('error')
@@ -147,9 +159,13 @@ export function TransactionForm({ open, onClose, transaction }: TransactionFormP
       ].filter(Boolean)
       setScanSummary(`Détecté : ${detected.join(' · ')}.`)
       setScanState('done')
-    } catch {
+    } catch (e) {
       setScanState('error')
-      setScanSummary('Le scan a échoué. Vérifie ta connexion (nécessaire au premier scan) et réessaie.')
+      setScanSummary(
+        e instanceof Error && e.message
+          ? e.message
+          : 'Le scan a échoué. Vérifie ta connexion (nécessaire au premier scan) et réessaie.',
+      )
     }
   }
 
