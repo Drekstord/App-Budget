@@ -743,6 +743,18 @@ table.data th.num {
   }
 }
 
+.pill-essential {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.05rem 0.4rem;
+  margin-left: 0.35rem;
+  border-radius: 999px;
+  background: var(--info-bg);
+  color: var(--info-ink);
+  vertical-align: 1px;
+}
+
 /* ---------- Plans de financement ---------- */
 
 .plan-card {

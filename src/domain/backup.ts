@@ -60,8 +60,9 @@ export function parseBackup(json: string): AppData {
     categories: data.categories,
     transactions: data.transactions,
     budgets: data.budgets,
-    // Champ ajouté après la V1 : absent des sauvegardes anciennes.
+    // Champs ajoutés après la V1 : absents des sauvegardes anciennes.
     fundingPlans: Array.isArray(data.fundingPlans) ? data.fundingPlans : [],
+    subscriptions: Array.isArray(data.subscriptions) ? data.subscriptions : [],
     settings: { ...DEFAULT_SETTINGS, ...data.settings },
   }
 }

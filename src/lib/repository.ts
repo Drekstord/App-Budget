@@ -13,6 +13,7 @@ import {
   type Category,
   type FundingPlan,
   type Settings,
+  type Subscription,
   type Transaction,
 } from '../domain/types.ts'
 
@@ -22,6 +23,7 @@ export type EntityTableName =
   | 'transactions'
   | 'budgets'
   | 'fundingPlans'
+  | 'subscriptions'
 
 const META_SALT = 'salt'
 const META_CHECK = 'check'
@@ -144,6 +146,7 @@ export class EncryptedRepository {
       transactions: [],
       budgets: [],
       fundingPlans: [],
+      subscriptions: [],
       settings: { ...DEFAULT_SETTINGS },
     }
     for (const record of records) {
@@ -163,6 +166,9 @@ export class EncryptedRepository {
           break
         case 'fundingPlans':
           data.fundingPlans.push(value as FundingPlan)
+          break
+        case 'subscriptions':
+          data.subscriptions.push(value as Subscription)
           break
         case 'settings':
           data.settings = { ...DEFAULT_SETTINGS, ...(value as Settings) }
@@ -191,6 +197,7 @@ export class EncryptedRepository {
       'transactions',
       'budgets',
       'fundingPlans',
+      'subscriptions',
     ]
     for (const table of tables) {
       for (const entity of data[table]) {

@@ -22,6 +22,7 @@ import {
   type Category,
   type FundingPlan,
   type Settings,
+  type Subscription,
   type Transaction,
 } from '../domain/types.ts'
 import { defaultAccount, defaultCategories } from '../domain/defaults.ts'
@@ -37,6 +38,19 @@ type TransactionInput = Pick<
 type FundingPlanInput = Pick<
   FundingPlan,
   'name' | 'targetAmount' | 'targetLabel' | 'targetDate' | 'accountRules' | 'incomes' | 'expenseEvents'
+>
+type SubscriptionInput = Pick<
+  Subscription,
+  | 'kind'
+  | 'name'
+  | 'amount'
+  | 'frequency'
+  | 'dayOfMonth'
+  | 'categoryId'
+  | 'essential'
+  | 'accountId'
+  | 'active'
+  | 'endDate'
 >
 
 interface AppState {
@@ -68,6 +82,10 @@ interface AppState {
   addFundingPlan: (input: FundingPlanInput) => Promise<FundingPlan>
   updateFundingPlan: (id: string, patch: Partial<FundingPlanInput>) => Promise<void>
   deleteFundingPlan: (id: string) => Promise<void>
+
+  addSubscription: (input: SubscriptionInput) => Promise<Subscription>
+  updateSubscription: (id: string, patch: Partial<SubscriptionInput>) => Promise<void>
+  deleteSubscription: (id: string) => Promise<void>
 
   updateSettings: (patch: Partial<Settings>) => Promise<void>
   importData: (data: AppData) => Promise<void>
@@ -140,6 +158,7 @@ export const useStore = create<AppState>()((set, get) => {
         transactions: [],
         budgets: [],
         fundingPlans: [],
+        subscriptions: [],
         settings: { ...DEFAULT_SETTINGS, defaultAccountId: account.id },
       }
       await repo.replaceAll(data)
@@ -307,6 +326,27 @@ export const useStore = create<AppState>()((set, get) => {
     async deleteFundingPlan(id) {
       const { data } = requireSession(get())
       await softDelete('fundingPlans', data.fundingPlans, id)
+    },
+
+    async addSubscription(input) {
+      const sub: Subscription = { ...stamp(), ...input }
+      await persist('subscriptions', sub, (list) => [...list, sub])
+      return sub
+    },
+
+    async updateSubscription(id, patch) {
+      const { data } = requireSession(get())
+      const existing = data.subscriptions.find((s) => s.id === id)
+      if (!existing) return
+      const updated = touch(existing, patch as Partial<Subscription>)
+      await persist('subscriptions', updated, (list) =>
+        list.map((s) => (s.id === id ? updated : s)),
+      )
+    },
+
+    async deleteSubscription(id) {
+      const { data } = requireSession(get())
+      await softDelete('subscriptions', data.subscriptions, id)
     },
 
     async updateSettings(patch) {

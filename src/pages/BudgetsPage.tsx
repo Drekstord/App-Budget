@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useStore } from '../store/useStore.ts'
 import { alive, type Category } from '../domain/types.ts'
 import { centsToInput, formatEUR, formatEURCompact, parseAmountToCents } from '../domain/money.ts'
@@ -51,6 +52,10 @@ export function BudgetsPage() {
   return (
     <div className="stack">
       <p className="chart-note">Période : {period.label}</p>
+
+      <Link to="/prelevements" className="btn" style={{ textDecoration: 'none' }}>
+        💳 Abonnements & prêts
+      </Link>
 
       {allocation.reference > 0 && (
         <div className="card">
