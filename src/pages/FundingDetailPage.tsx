@@ -120,6 +120,45 @@ export function FundingDetailPage() {
         </section>
       )}
 
+      <section className="card">
+        <h2>Marche à suivre</h2>
+        <ol className="steps">
+          {result.coveredNow > 0 && (
+            <li>
+              <strong>Mobilise maintenant {formatEUR(result.coveredNow)}</strong> depuis tes comptes
+              (répartition détaillée plus bas).
+            </li>
+          )}
+          {result.shortfallNow > 0 && result.monthsRemaining > 0 && (
+            <li>
+              <strong>Mets de côté {formatEUR(result.requiredMonthlySaving)}/mois</strong>
+              {(() => {
+                const days = Math.max(
+                  1,
+                  Math.round(
+                    (new Date(plan.targetDate + 'T00:00:00').getTime() - Date.now()) / 86_400_000,
+                  ),
+                )
+                return <> (≈ {formatEUR(Math.ceil(result.shortfallNow / days))}/jour)</>
+              })()}{' '}
+              jusqu’à l’échéance.
+            </li>
+          )}
+          {result.feasibility === 'covered_now' && (
+            <li>Tu peux financer cette dépense <strong>intégralement dès maintenant</strong>.</li>
+          )}
+          {result.feasibility === 'feasible_variable' && (
+            <li>Compte sur tes revenus variables pour boucler — sinon, épargne un peu plus.</li>
+          )}
+          {result.feasibility === 'infeasible' && (
+            <li>
+              Objectif hors de portée en l’état : <strong>repousse l’échéance</strong>, réduis le
+              montant, ou ajoute des revenus.
+            </li>
+          )}
+        </ol>
+      </section>
+
       <section className="card chart-block">
         <h2>Trajectoire jusqu’à l’échéance</h2>
         <p className="chart-note">
