@@ -9,16 +9,40 @@ import { Modal } from '../components/Modal.tsx'
 
 const dayLabel = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long' })
 
+type SortKey = 'ratio' | 'amountDesc' | 'amountAsc' | 'spentDesc' | 'name'
+
+const SORT_LABELS: Record<SortKey, string> = {
+  ratio: '% consommé (décroissant)',
+  amountDesc: 'Budget décroissant',
+  amountAsc: 'Budget croissant',
+  spentDesc: 'Dépensé décroissant',
+  name: 'Nom (A → Z)',
+}
+
 export function BudgetsPage() {
   const data = useStore((s) => s.data)
   const setBudget = useStore((s) => s.setBudget)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [amount, setAmount] = useState('')
   const [error, setError] = useState('')
+  const [sortKey, setSortKey] = useState<SortKey>('ratio')
 
   if (!data) return null
   const period = periodForDate(todayISO(), data.settings.monthStartDay)
-  const statuses = budgetStatuses(data, period)
+  const statuses = budgetStatuses(data, period).sort((a, b) => {
+    switch (sortKey) {
+      case 'amountDesc':
+        return b.budget.monthlyAmount - a.budget.monthlyAmount
+      case 'amountAsc':
+        return a.budget.monthlyAmount - b.budget.monthlyAmount
+      case 'spentDesc':
+        return b.spent - a.spent
+      case 'name':
+        return a.category.name.localeCompare(b.category.name, 'fr')
+      default:
+        return b.ratio - a.ratio
+    }
+  })
   const budgetedIds = new Set(statuses.map((s) => s.category.id))
   const unbudgeted = alive(data.categories).filter(
     (c) => c.kind === 'expense' && !c.parentId && !budgetedIds.has(c.id),
@@ -57,42 +81,76 @@ export function BudgetsPage() {
         💳 Abonnements & prêts
       </Link>
 
-      {allocation.reference > 0 && (
-        <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
+      <div className="card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <div>
+            <div className="kpi-label">Reste à attribuer</div>
+            <div
+              className="kpi-value"
+              style={{
+                color:
+                  allocation.reference === 0
+                    ? 'var(--text-2)'
+                    : allocation.remaining < 0
+                      ? 'var(--critical)'
+                      : 'var(--good)',
+              }}
+            >
+              {allocation.reference > 0 ? formatEUR(allocation.remaining) : '—'}
+            </div>
+          </div>
+          <div style={{ textAlign: 'right', fontSize: '0.82rem', color: 'var(--text-2)' }}>
             <div>
-              <div className="kpi-label">Reste à attribuer</div>
-              <div
-                className="kpi-value"
-                style={{ color: allocation.remaining < 0 ? 'var(--critical)' : 'var(--good)' }}
-              >
-                {formatEUR(allocation.remaining)}
-              </div>
+              Revenu de référence :{' '}
+              {allocation.reference > 0 ? formatEURCompact(allocation.reference) : 'non défini'}
             </div>
-            <div style={{ textAlign: 'right', fontSize: '0.82rem', color: 'var(--text-2)' }}>
-              <div>Revenu de référence : {formatEURCompact(allocation.reference)}</div>
-              <div>Déjà budgété : {formatEURCompact(allocation.totalBudgeted)}</div>
+            <div>Déjà budgété : {formatEURCompact(allocation.totalBudgeted)}</div>
+          </div>
+        </div>
+        {allocation.reference > 0 ? (
+          <>
+            <div
+              className={`gauge ${allocation.remaining < 0 ? 'gauge-over' : ''}`}
+              style={{ marginTop: '0.6rem' }}
+              role="progressbar"
+              aria-valuenow={Math.min(100, Math.round((allocation.totalBudgeted / allocation.reference) * 100))}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="Part du revenu de référence déjà budgétée"
+            >
+              <span style={{ width: `${Math.min(100, (allocation.totalBudgeted / allocation.reference) * 100)}%` }} />
             </div>
-          </div>
-          <div
-            className={`gauge ${allocation.remaining < 0 ? 'gauge-over' : ''}`}
-            style={{ marginTop: '0.6rem' }}
-            role="progressbar"
-            aria-valuenow={Math.min(100, Math.round((allocation.totalBudgeted / allocation.reference) * 100))}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label="Part du revenu de référence déjà budgétée"
-          >
-            <span style={{ width: `${Math.min(100, (allocation.totalBudgeted / allocation.reference) * 100)}%` }} />
-          </div>
+            <p className="chart-note" style={{ marginBottom: 0 }}>
+              {allocation.remaining < 0
+                ? `Tu as budgété ${formatEUR(-allocation.remaining)} de plus que ton revenu de référence.`
+                : `Il te reste ${formatEUR(allocation.remaining)} de ton revenu à répartir dans des catégories.`}{' '}
+              {allocation.referenceIsManual
+                ? 'Référence : revenu que tu as fixé dans les réglages.'
+                : 'Référence : moyenne de tes revenus des 3 derniers mois (modifiable dans les réglages).'}
+            </p>
+          </>
+        ) : (
           <p className="chart-note" style={{ marginBottom: 0 }}>
-            {allocation.remaining < 0
-              ? `Tu as budgété ${formatEUR(-allocation.remaining)} de plus que ton revenu de référence.`
-              : `Il te reste ${formatEUR(allocation.remaining)} de ton revenu à répartir dans des catégories.`}{' '}
-            {allocation.referenceIsManual
-              ? 'Référence : revenu que tu as fixé dans les réglages.'
-              : 'Référence : moyenne de tes revenus des 3 derniers mois (modifiable dans les réglages).'}
+            Renseigne un <Link to="/reglages">revenu mensuel de référence</Link> (ou saisis des
+            revenus) pour savoir combien il te reste à répartir dans tes catégories.
           </p>
+        )}
+      </div>
+
+      {statuses.length > 1 && (
+        <div className="field" style={{ margin: 0 }}>
+          <label htmlFor="budget-sort">Trier par</label>
+          <select
+            id="budget-sort"
+            value={sortKey}
+            onChange={(e) => setSortKey(e.target.value as SortKey)}
+          >
+            {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
+              <option key={k} value={k}>
+                {SORT_LABELS[k]}
+              </option>
+            ))}
+          </select>
         </div>
       )}
 
@@ -117,6 +175,12 @@ export function BudgetsPage() {
                 <span className="item-title">{s.category.name}</span>
                 <div className="item-sub">
                   {formatEUR(s.spent)} sur {formatEURCompact(s.budget.monthlyAmount)} ({pct} %)
+                  {s.subscriptionSpent > 0 && (
+                    <>
+                      <br />
+                      dont {formatEUR(s.subscriptionSpent)} d’abonnements
+                    </>
+                  )}
                 </div>
               </div>
               <button

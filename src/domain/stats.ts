@@ -2,6 +2,7 @@
 
 import { alive, type Account, type AppData, type Budget, type Category, type Transaction } from './types.ts'
 import { inPeriod, lastPeriods, periodProgress, type Period } from './periods.ts'
+import { committedForCategories } from './subscriptions.ts'
 
 export function accountBalance(account: Account, transactions: Transaction[]): number {
   let balance = account.initialBalance
@@ -150,6 +151,8 @@ export interface BudgetStatus {
   budget: Budget
   category: Category
   spent: number
+  /** Part de `spent` provenant des abonnements/prêts (le reste = opérations). */
+  subscriptionSpent: number
   /** 0..n — 1 = budget consommé. */
   ratio: number
   level: BudgetLevel
@@ -161,11 +164,19 @@ export function budgetStatuses(data: AppData, period: Period, todayIso?: string)
   const categories = alive(data.categories)
   const byId = new Map(categories.map((c) => [c.id, c]))
   const { elapsedDays } = periodProgress(period, todayIso)
+  const today = todayIso ?? period.end
   const statuses: BudgetStatus[] = []
   for (const budget of alive(data.budgets)) {
     const category = byId.get(budget.categoryId)
     if (!category) continue
-    const spent = spentForCategory(budget.categoryId, data, period)
+    // Les abonnements/prêts de la catégorie comptent dans la consommation du budget.
+    const subscriptionSpent = committedForCategories(
+      data.subscriptions,
+      categoryWithChildren(budget.categoryId, data.categories),
+      period,
+      today,
+    )
+    const spent = spentForCategory(budget.categoryId, data, period) + subscriptionSpent
     const ratio = budget.monthlyAmount > 0 ? spent / budget.monthlyAmount : 0
     const level: BudgetLevel =
       ratio >= 1 ? 'over' : ratio >= data.settings.warnThreshold / 100 ? 'warning' : 'ok'
@@ -180,7 +191,7 @@ export function budgetStatuses(data: AppData, period: Period, todayIso?: string)
         projectedOverDate = overDate.toISOString().slice(0, 10)
       }
     }
-    statuses.push({ budget, category, spent, ratio, level, projectedOverDate })
+    statuses.push({ budget, category, spent, subscriptionSpent, ratio, level, projectedOverDate })
   }
   return statuses.sort((a, b) => b.ratio - a.ratio)
 }

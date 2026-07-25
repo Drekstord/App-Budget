@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
+  committedForPeriod,
   computeCommitmentSummary,
   isCommitmentActive,
   loanRemaining,
   monthlyEquivalent,
   monthsUntil,
 } from './subscriptions.ts'
+import { budgetStatuses } from './stats.ts'
+import { periodForDate } from './periods.ts'
 import {
   DEFAULT_SETTINGS,
   stamp,
@@ -24,6 +27,7 @@ function sub(overrides: Partial<Subscription> = {}): Subscription {
     amount: 1000,
     frequency: 'monthly',
     dayOfMonth: 5,
+    dueMonth: null,
     categoryId: null,
     essential: false,
     accountId: null,
@@ -65,6 +69,70 @@ describe('prêt : reste à rembourser', () => {
   it('un prêt échu ne compte plus', () => {
     const loan = sub({ kind: 'loan', amount: 25000, endDate: '2026-06-15' })
     expect(isCommitmentActive(loan, '2026-07-23')).toBe(false)
+  })
+})
+
+describe('abonnement annuel : imputation dans son mois', () => {
+  const july = periodForDate('2026-07-15', 1)
+  const march = periodForDate('2026-03-15', 1)
+
+  it('compte le montant plein dans le mois d’échéance', () => {
+    const yearly = sub({ frequency: 'yearly', amount: 12000, dueMonth: 3, dayOfMonth: 10 })
+    expect(committedForPeriod(yearly, march, '2026-03-15')).toBe(12000)
+    expect(committedForPeriod(yearly, july, '2026-07-15')).toBe(0)
+  })
+
+  it('un mensuel compte chaque mois', () => {
+    const monthly = sub({ frequency: 'monthly', amount: 1300 })
+    expect(committedForPeriod(monthly, july, '2026-07-15')).toBe(1300)
+    expect(committedForPeriod(monthly, march, '2026-03-15')).toBe(1300)
+  })
+
+  it('respecte un mois budgétaire décalé (jour de paie)', () => {
+    // Période du 28 juin au 27 juillet : une échéance au 5 juillet en fait partie.
+    const shifted = periodForDate('2026-07-15', 28)
+    const yearly = sub({ frequency: 'yearly', amount: 9000, dueMonth: 7, dayOfMonth: 5 })
+    expect(committedForPeriod(yearly, shifted, '2026-07-15')).toBe(9000)
+  })
+})
+
+describe('abonnements intégrés aux budgets', () => {
+  const categories: Category[] = [
+    { ...stamp(), id: 'abo', name: 'Abonnements', kind: 'expense', parentId: null, icon: '📱', colorSlot: 6 },
+  ]
+
+  it('la consommation du budget inclut les abonnements de la catégorie', () => {
+    const budgets: Budget[] = [{ ...stamp(), categoryId: 'abo', monthlyAmount: 5000 }]
+    const data = appData({
+      categories,
+      budgets,
+      subscriptions: [
+        sub({ name: 'Netflix', amount: 1300, categoryId: 'abo' }),
+        sub({ name: 'Spotify', amount: 1100, categoryId: 'abo' }),
+      ],
+    })
+    const [status] = budgetStatuses(data, periodForDate('2026-07-15', 1), '2026-07-15')
+    expect(status.subscriptionSpent).toBe(2400)
+    expect(status.spent).toBe(2400) // aucune opération saisie : tout vient des abonnements
+    expect(status.ratio).toBeCloseTo(2400 / 5000)
+  })
+
+  it('un abonnement annuel ne pèse sur le budget que le mois de son échéance', () => {
+    const budgets: Budget[] = [{ ...stamp(), categoryId: 'abo', monthlyAmount: 5000 }]
+    const data = appData({
+      categories,
+      budgets,
+      subscriptions: [
+        sub({ name: 'Assurance annuelle', amount: 12000, frequency: 'yearly', dueMonth: 3, categoryId: 'abo' }),
+      ],
+    })
+    const inJuly = budgetStatuses(data, periodForDate('2026-07-15', 1), '2026-07-15')[0]
+    expect(inJuly.subscriptionSpent).toBe(0)
+    expect(inJuly.level).toBe('ok')
+
+    const inMarch = budgetStatuses(data, periodForDate('2026-03-15', 1), '2026-03-15')[0]
+    expect(inMarch.subscriptionSpent).toBe(12000)
+    expect(inMarch.level).toBe('over') // 120 € > budget 50 €
   })
 })
 

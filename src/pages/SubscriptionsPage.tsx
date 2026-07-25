@@ -8,7 +8,7 @@ import {
   type SubscriptionFrequency,
 } from '../domain/types.ts'
 import { centsToInput, formatEUR, formatEURCompact, parseAmountToCents } from '../domain/money.ts'
-import { todayISO } from '../domain/periods.ts'
+import { periodForDate, todayISO } from '../domain/periods.ts'
 import {
   computeCommitmentSummary,
   isCommitmentActive,
@@ -18,12 +18,28 @@ import { Modal } from '../components/Modal.tsx'
 
 const monthYear = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' })
 
+const MONTH_NAMES = [
+  'janvier',
+  'février',
+  'mars',
+  'avril',
+  'mai',
+  'juin',
+  'juillet',
+  'août',
+  'septembre',
+  'octobre',
+  'novembre',
+  'décembre',
+]
+
 interface FormState {
   kind: CommitmentKind
   name: string
   amount: string
   frequency: SubscriptionFrequency
   dayOfMonth: string
+  dueMonth: string
   categoryId: string
   essential: boolean
   accountId: string
@@ -37,6 +53,7 @@ const EMPTY_FORM: FormState = {
   amount: '',
   frequency: 'monthly',
   dayOfMonth: '1',
+  dueMonth: String(new Date().getMonth() + 1),
   categoryId: '',
   essential: false,
   accountId: '',
@@ -56,7 +73,11 @@ export function SubscriptionsPage() {
   const [error, setError] = useState('')
 
   const today = todayISO()
-  const summary = useMemo(() => (data ? computeCommitmentSummary(data, today) : null), [data, today])
+  const period = data ? periodForDate(today, data.settings.monthStartDay) : null
+  const summary = useMemo(
+    () => (data && period ? computeCommitmentSummary(data, today, period) : null),
+    [data, today, period],
+  )
 
   if (!data || !summary) return null
   const categories = alive(data.categories).filter((c) => c.kind === 'expense')
@@ -79,6 +100,7 @@ export function SubscriptionsPage() {
         amount: centsToInput(sub.amount),
         frequency: sub.frequency,
         dayOfMonth: String(sub.dayOfMonth),
+        dueMonth: String(sub.dueMonth ?? new Date().getMonth() + 1),
         categoryId: sub.categoryId ?? '',
         essential: sub.essential,
         accountId: sub.accountId ?? '',
@@ -98,12 +120,14 @@ export function SubscriptionsPage() {
     const day = Math.min(31, Math.max(1, Number(form.dayOfMonth) || 1))
     if (form.kind === 'loan' && !form.endDate) return setError('Indique la date de fin du prêt.')
 
+    const isYearly = form.kind === 'subscription' && form.frequency === 'yearly'
     const input = {
       kind: form.kind,
       name: form.name.trim(),
       amount,
       frequency: form.kind === 'loan' ? ('monthly' as const) : form.frequency,
       dayOfMonth: day,
+      dueMonth: isYearly ? Math.min(12, Math.max(1, Number(form.dueMonth) || 1)) : null,
       categoryId: form.categoryId || null,
       essential: form.kind === 'loan' ? true : form.essential,
       accountId: form.accountId || null,
@@ -172,6 +196,11 @@ export function SubscriptionsPage() {
       {summary.byCategory.length > 0 && (
         <section className="card">
           <h2>Par catégorie vs budget</h2>
+          <p className="chart-note">
+            Montants imputés à la période en cours ({period?.label}) : un abonnement annuel compte
+            en totalité dans son mois d’échéance. Ces montants sont inclus dans la consommation des
+            budgets.
+          </p>
           <ul className="list">
             {summary.byCategory.map((c) => (
               <li key={c.categoryId ?? 'none'} className="list-item">
@@ -237,7 +266,11 @@ export function SubscriptionsPage() {
                     <span className="item-sub">
                       {sub.kind === 'loan'
                         ? `Prêt · le ${sub.dayOfMonth} · reste ${formatEURCompact(remaining)}${sub.endDate ? ` jusqu’en ${monthYear.format(new Date(sub.endDate + 'T00:00:00'))}` : ''}`
-                        : `${sub.frequency === 'yearly' ? 'Annuel' : 'Mensuel'} · le ${sub.dayOfMonth}${cat ? ` · ${cat.name}` : ''}${acc ? ` · ${acc.name}` : ''}`}
+                        : `${
+                            sub.frequency === 'yearly'
+                              ? `Annuel · le ${sub.dayOfMonth} ${MONTH_NAMES[(sub.dueMonth ?? 1) - 1]}`
+                              : `Mensuel · le ${sub.dayOfMonth}`
+                          }${cat ? ` · ${cat.name}` : ''}${acc ? ` · ${acc.name}` : ''}`}
                     </span>
                   </span>
                   <span className="amount">
@@ -340,17 +373,39 @@ export function SubscriptionsPage() {
           </div>
 
           {form.kind === 'subscription' ? (
-            <div className="field">
-              <label htmlFor="sub-freq">Fréquence</label>
-              <select
-                id="sub-freq"
-                value={form.frequency}
-                onChange={(e) => patch({ frequency: e.target.value as SubscriptionFrequency })}
-              >
-                <option value="monthly">Mensuelle</option>
-                <option value="yearly">Annuelle</option>
-              </select>
-            </div>
+            <>
+              <div className="field">
+                <label htmlFor="sub-freq">Fréquence</label>
+                <select
+                  id="sub-freq"
+                  value={form.frequency}
+                  onChange={(e) => patch({ frequency: e.target.value as SubscriptionFrequency })}
+                >
+                  <option value="monthly">Mensuelle</option>
+                  <option value="yearly">Annuelle</option>
+                </select>
+              </div>
+              {form.frequency === 'yearly' && (
+                <div className="field">
+                  <label htmlFor="sub-month">Mois du prélèvement</label>
+                  <select
+                    id="sub-month"
+                    value={form.dueMonth}
+                    onChange={(e) => patch({ dueMonth: e.target.value })}
+                  >
+                    {MONTH_NAMES.map((m, i) => (
+                      <option key={m} value={i + 1}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="chart-note" style={{ marginTop: '0.3rem' }}>
+                    Le montant complet sera compté dans le budget de ce mois-là, quand l’échéance
+                    arrive.
+                  </p>
+                </div>
+              )}
+            </>
           ) : (
             <div className="field">
               <label htmlFor="sub-end">Dernière mensualité (date de fin)</label>
