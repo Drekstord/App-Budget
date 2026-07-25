@@ -112,6 +112,8 @@ export interface Subscription extends BaseEntity {
   frequency: SubscriptionFrequency
   /** Jour de prélèvement dans le mois (1 à 31). */
   dayOfMonth: number
+  /** Mois du prélèvement annuel (1 à 12) ; null pour un abonnement mensuel. */
+  dueMonth: number | null
   categoryId: string | null
   /** Indispensable (loyer, assurance…) ou non (loisir…). */
   essential: boolean

@@ -46,6 +46,7 @@ type SubscriptionInput = Pick<
   | 'amount'
   | 'frequency'
   | 'dayOfMonth'
+  | 'dueMonth'
   | 'categoryId'
   | 'essential'
   | 'accountId'
