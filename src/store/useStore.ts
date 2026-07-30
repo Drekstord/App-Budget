@@ -26,6 +26,8 @@ import {
   type Transaction,
 } from '../domain/types.ts'
 import { defaultAccount, defaultCategories } from '../domain/defaults.ts'
+import { pendingSubscriptionTransactions } from '../domain/recurring.ts'
+import { todayISO } from '../domain/periods.ts'
 
 export type AppPhase = 'loading' | 'setup' | 'locked' | 'unlocked'
 
@@ -83,6 +85,9 @@ interface AppState {
   addFundingPlan: (input: FundingPlanInput) => Promise<FundingPlan>
   updateFundingPlan: (id: string, patch: Partial<FundingPlanInput>) => Promise<void>
   deleteFundingPlan: (id: string) => Promise<void>
+
+  /** Matérialise en opérations les échéances d'abonnement/prêt déjà arrivées. */
+  syncSubscriptions: () => Promise<number>
 
   addSubscription: (input: SubscriptionInput) => Promise<Subscription>
   updateSubscription: (id: string, patch: Partial<SubscriptionInput>) => Promise<void>
@@ -327,6 +332,15 @@ export const useStore = create<AppState>()((set, get) => {
     async deleteFundingPlan(id) {
       const { data } = requireSession(get())
       await softDelete('fundingPlans', data.fundingPlans, id)
+    },
+
+    async syncSubscriptions() {
+      const { data, repo } = requireSession(get())
+      const created = pendingSubscriptionTransactions(data, todayISO())
+      if (created.length === 0) return 0
+      set({ data: { ...data, transactions: [...data.transactions, ...created] } })
+      for (const t of created) await repo.put('transactions', t)
+      return created.length
     },
 
     async addSubscription(input) {

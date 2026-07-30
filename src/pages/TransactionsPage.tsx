@@ -68,7 +68,8 @@ export function TransactionsPage() {
     }
     const cat = categoryById.get(t.categoryId ?? '')
     return {
-      icon: cat?.icon ?? '❓',
+      // Les prélèvements générés automatiquement sont repérables d'un coup d'œil.
+      icon: t.subscriptionId ? '🔁' : (cat?.icon ?? '❓'),
       title: t.payee || cat?.name || 'Sans catégorie',
       sub: [cat?.name, accountById.get(t.accountId)?.name, t.note].filter(Boolean).join(' · '),
     }
