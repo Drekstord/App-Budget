@@ -35,8 +35,12 @@ Les exigences complètes sont dans [EXIGENCES.md](EXIGENCES.md).
   tiennent compte de ce qui reste (pas de double engagement du même argent)
 - 💳 **Prélèvements** (abonnements & prêts) : montant, échéance, catégorie,
   indispensable ou non, compte de prélèvement ; total mensuel, montant à
-  provisionner par compte, comparaison au budget par catégorie, et reste à
-  rembourser d'un prêt jusqu'à sa date de fin
+  provisionner par compte, et reste à rembourser d'un prêt jusqu'à sa date de fin.
+  À chaque échéance, l'**opération est créée automatiquement** (une seule fois) :
+  c'est elle qui consomme le budget, comme une dépense saisie à la main
+- 🧮 **Disponible réel du mois** : revenu − tout ce qui est déjà dépensé (y compris
+  hors budget) − ce qui reste réservé dans les enveloppes, plus la liste des
+  dépenses non budgétées — pour ne pas se croire plus riche qu'on ne l'est
 - 💾 Export / import de sauvegarde JSON
 - 🌗 Thème clair / sombre, interface conforme RGAA, mois budgétaire personnalisable
 

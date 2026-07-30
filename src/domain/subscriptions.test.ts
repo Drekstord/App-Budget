@@ -9,6 +9,7 @@ import {
 } from './subscriptions.ts'
 import { budgetStatuses } from './stats.ts'
 import { periodForDate } from './periods.ts'
+import { pendingSubscriptionTransactions } from './recurring.ts'
 import {
   DEFAULT_SETTINGS,
   stamp,
@@ -96,43 +97,61 @@ describe('abonnement annuel : imputation dans son mois', () => {
   })
 })
 
-describe('abonnements intégrés aux budgets', () => {
+describe('abonnements → opérations → budgets', () => {
   const categories: Category[] = [
     { ...stamp(), id: 'abo', name: 'Abonnements', kind: 'expense', parentId: null, icon: '📱', colorSlot: 6 },
   ]
 
-  it('la consommation du budget inclut les abonnements de la catégorie', () => {
+  it('le budget n’est consommé qu’une fois les opérations générées', () => {
     const budgets: Budget[] = [{ ...stamp(), categoryId: 'abo', monthlyAmount: 5000 }]
     const data = appData({
       categories,
       budgets,
       subscriptions: [
-        sub({ name: 'Netflix', amount: 1300, categoryId: 'abo' }),
-        sub({ name: 'Spotify', amount: 1100, categoryId: 'abo' }),
+        sub({ name: 'Netflix', amount: 1300, categoryId: 'abo', createdAt: '2026-07-01T00:00:00Z' }),
+        sub({ name: 'Spotify', amount: 1100, categoryId: 'abo', createdAt: '2026-07-01T00:00:00Z' }),
       ],
     })
-    const [status] = budgetStatuses(data, periodForDate('2026-07-15', 1), '2026-07-15')
-    expect(status.subscriptionSpent).toBe(2400)
-    expect(status.spent).toBe(2400) // aucune opération saisie : tout vient des abonnements
+    const period = periodForDate('2026-07-15', 1)
+
+    // Avant génération : le budget ne voit rien.
+    expect(budgetStatuses(data, period, '2026-07-15')[0].spent).toBe(0)
+
+    // Après génération des échéances arrivées, ce sont des opérations normales.
+    const created = pendingSubscriptionTransactions(data, '2026-07-15')
+    const withTx = { ...data, transactions: [...data.transactions, ...created] }
+    const [status] = budgetStatuses(withTx, period, '2026-07-15')
+    expect(status.spent).toBe(2400)
+    expect(status.subscriptionSpent).toBe(2400) // part issue des prélèvements
     expect(status.ratio).toBeCloseTo(2400 / 5000)
   })
 
-  it('un abonnement annuel ne pèse sur le budget que le mois de son échéance', () => {
+  it('un abonnement annuel ne génère (et ne pèse) que dans son mois', () => {
     const budgets: Budget[] = [{ ...stamp(), categoryId: 'abo', monthlyAmount: 5000 }]
     const data = appData({
       categories,
       budgets,
       subscriptions: [
-        sub({ name: 'Assurance annuelle', amount: 12000, frequency: 'yearly', dueMonth: 3, categoryId: 'abo' }),
+        sub({
+          name: 'Assurance annuelle',
+          amount: 12000,
+          frequency: 'yearly',
+          dueMonth: 3,
+          categoryId: 'abo',
+          createdAt: '2026-01-01T00:00:00Z',
+        }),
       ],
     })
-    const inJuly = budgetStatuses(data, periodForDate('2026-07-15', 1), '2026-07-15')[0]
-    expect(inJuly.subscriptionSpent).toBe(0)
-    expect(inJuly.level).toBe('ok')
+    // Au 15 juillet, l'échéance de mars est passée : une seule opération générée.
+    const created = pendingSubscriptionTransactions(data, '2026-07-15')
+    expect(created).toHaveLength(1)
+    expect(created[0].date).toBe('2026-03-05')
 
-    const inMarch = budgetStatuses(data, periodForDate('2026-03-15', 1), '2026-03-15')[0]
-    expect(inMarch.subscriptionSpent).toBe(12000)
-    expect(inMarch.level).toBe('over') // 120 € > budget 50 €
+    const withTx = { ...data, transactions: created }
+    expect(budgetStatuses(withTx, periodForDate('2026-07-15', 1), '2026-07-15')[0].spent).toBe(0)
+    const march = budgetStatuses(withTx, periodForDate('2026-03-15', 1), '2026-03-15')[0]
+    expect(march.spent).toBe(12000)
+    expect(march.level).toBe('over') // 120 € > budget 50 €
   })
 })
 

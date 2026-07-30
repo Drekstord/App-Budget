@@ -14,6 +14,7 @@ import {
   isCommitmentActive,
   loanRemaining,
 } from '../domain/subscriptions.ts'
+import { nextOccurrence } from '../domain/recurring.ts'
 import { Modal } from '../components/Modal.tsx'
 
 const monthYear = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' })
@@ -149,8 +150,9 @@ export function SubscriptionsPage() {
   return (
     <div className="stack">
       <p className="chart-note">
-        Tes abonnements et prêts prélevés automatiquement. L’app calcule ce que tu envoies chaque
-        mois et compare aux budgets par catégorie.
+        Tes abonnements et prêts prélevés automatiquement. À chaque date d’échéance, l’app crée
+        l’opération correspondante dans <Link to="/transactions">Opérations</Link> — c’est elle qui
+        alimente le budget de la catégorie, comme une dépense saisie à la main.
       </p>
 
       {/* Synthèse */}
@@ -197,9 +199,9 @@ export function SubscriptionsPage() {
         <section className="card">
           <h2>Par catégorie vs budget</h2>
           <p className="chart-note">
-            Montants imputés à la période en cours ({period?.label}) : un abonnement annuel compte
-            en totalité dans son mois d’échéance. Ces montants sont inclus dans la consommation des
-            budgets.
+            Prévisionnel de la période en cours ({period?.label}) : un abonnement annuel compte en
+            totalité dans son mois d’échéance. Le budget, lui, n’est consommé qu’une fois
+            l’opération créée automatiquement à la date du prélèvement.
           </p>
           <ul className="list">
             {summary.byCategory.map((c) => (
@@ -256,6 +258,11 @@ export function SubscriptionsPage() {
                   </span>
                   <span className="item-body">
                     <span className="item-title">
+                      {activeNow && nextOccurrence(sub, today) && (
+                        <span className="visually-hidden">
+                          Prochaine échéance le {nextOccurrence(sub, today)}.{' '}
+                        </span>
+                      )}
                       {sub.name}
                       {sub.essential && sub.kind !== 'loan' && (
                         <span className="pill-essential"> indispensable</span>

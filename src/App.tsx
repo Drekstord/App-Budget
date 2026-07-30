@@ -63,12 +63,19 @@ function useAutoLock() {
 export default function App() {
   const phase = useStore((s) => s.phase)
   const init = useStore((s) => s.init)
+  const syncSubscriptions = useStore((s) => s.syncSubscriptions)
   useResolvedTheme()
   useAutoLock()
 
   useEffect(() => {
     void init()
   }, [init])
+
+  // À chaque déverrouillage : matérialise en opérations les échéances
+  // d'abonnement et de prêt déjà arrivées.
+  useEffect(() => {
+    if (phase === 'unlocked') void syncSubscriptions()
+  }, [phase, syncSubscriptions])
 
   if (phase === 'loading') {
     return (

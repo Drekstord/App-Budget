@@ -4,7 +4,7 @@ import { useStore } from '../store/useStore.ts'
 import { alive, type Category } from '../domain/types.ts'
 import { centsToInput, formatEUR, formatEURCompact, parseAmountToCents } from '../domain/money.ts'
 import { periodForDate, todayISO } from '../domain/periods.ts'
-import { budgetAllocation, budgetStatuses } from '../domain/stats.ts'
+import { budgetAllocation, budgetStatuses, realAvailability } from '../domain/stats.ts'
 import { Modal } from '../components/Modal.tsx'
 
 const dayLabel = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long' })
@@ -72,6 +72,7 @@ export function BudgetsPage() {
   }
 
   const allocation = budgetAllocation(data)
+  const real = realAvailability(data, period)
 
   return (
     <div className="stack">
@@ -136,6 +137,101 @@ export function BudgetsPage() {
           </p>
         )}
       </div>
+
+      {/* Vue « honnête » : les dépenses hors budget rognent aussi le disponible. */}
+      {real.reference > 0 && (
+        <div className="card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <div>
+              <div className="kpi-label">Disponible réel ce mois</div>
+              <div
+                className="kpi-value"
+                style={{ color: real.realRemaining < 0 ? 'var(--critical)' : 'var(--good)' }}
+              >
+                {formatEUR(real.realRemaining)}
+              </div>
+              <div className="kpi-sub">après dépenses et enveloppes réservées</div>
+            </div>
+          </div>
+          <div className="table-wrap" style={{ marginTop: '0.6rem' }}>
+            <table className="data">
+              <caption className="visually-hidden">Détail du disponible réel</caption>
+              <tbody>
+                <tr>
+                  <th scope="row">Revenu de référence</th>
+                  <td className="num">{formatEUR(real.reference)}</td>
+                </tr>
+                <tr>
+                  <th scope="row">− Dépensé dans les budgets</th>
+                  <td className="num">{formatEUR(real.spentBudgeted)}</td>
+                </tr>
+                <tr>
+                  <th scope="row" style={real.spentUnbudgeted > 0 ? { color: 'var(--critical)' } : undefined}>
+                    − Dépensé hors budget
+                  </th>
+                  <td className="num" style={real.spentUnbudgeted > 0 ? { color: 'var(--critical)' } : undefined}>
+                    {formatEUR(real.spentUnbudgeted)}
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">− Encore réservé dans les budgets</th>
+                  <td className="num">{formatEUR(real.budgetReserved)}</td>
+                </tr>
+                <tr>
+                  <th scope="row">
+                    <strong>= Disponible réel</strong>
+                  </th>
+                  <td className="num">
+                    <strong>{formatEUR(real.realRemaining)}</strong>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          {real.spentUnbudgeted > 0 && (
+            <p className="notice notice-warning" style={{ marginTop: '0.6rem', marginBottom: 0 }}>
+              <span aria-hidden="true">⚠️</span>
+              <span>
+                {formatEUR(real.spentUnbudgeted)} de dépenses ne sont couvertes par aucun budget :
+                elles n’apparaissent dans aucune jauge, mais elles réduisent bien ce qu’il te reste.
+              </span>
+            </p>
+          )}
+        </div>
+      )}
+
+      {real.unbudgeted.length > 0 && (
+        <section className="card">
+          <h2>Dépenses hors budget ce mois</h2>
+          <p className="chart-note">
+            Ces catégories ont été dépensées sans budget défini. Fixe-leur une limite pour les
+            suivre, ou garde-les à l’œil ici.
+          </p>
+          <ul className="list">
+            {real.unbudgeted.map((u) => (
+              <li key={u.category?.id ?? 'none'} className="list-item">
+                <span className="item-icon" aria-hidden="true">
+                  {u.category?.icon ?? '❓'}
+                </span>
+                <span className="item-body">
+                  <span className="item-title">{u.category?.name ?? 'Sans catégorie'}</span>
+                </span>
+                <span className="amount">{formatEUR(u.amount)}</span>
+                {u.category && (
+                  <button
+                    type="button"
+                    className="btn"
+                    style={{ minHeight: 36, padding: '0.25rem 0.6rem', fontSize: '0.82rem' }}
+                    onClick={() => openEditor(u.category!, null)}
+                  >
+                    Budgéter
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {statuses.length > 1 && (
         <div className="field" style={{ margin: 0 }}>

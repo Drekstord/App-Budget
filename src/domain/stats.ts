@@ -2,7 +2,6 @@
 
 import { alive, type Account, type AppData, type Budget, type Category, type Transaction } from './types.ts'
 import { inPeriod, lastPeriods, periodProgress, type Period } from './periods.ts'
-import { committedForCategories } from './subscriptions.ts'
 
 export function accountBalance(account: Account, transactions: Transaction[]): number {
   let balance = account.initialBalance
@@ -145,13 +144,88 @@ export function budgetAllocation(data: AppData, todayIso?: string): BudgetAlloca
   }
 }
 
+export interface UnbudgetedSlice {
+  category: Category | null
+  amount: number
+}
+
+export interface RealAvailability {
+  /** Revenu mensuel de référence (0 s'il est inconnu). */
+  reference: number
+  /** Total réellement dépensé sur la période, toutes catégories confondues. */
+  totalSpent: number
+  /** Part dépensée dans des catégories qui ont un budget. */
+  spentBudgeted: number
+  /** Part dépensée hors de tout budget (invisible des jauges). */
+  spentUnbudgeted: number
+  /** Ce qui reste encore réservé dans les enveloppes budgétaires. */
+  budgetReserved: number
+  /** Revenu − dépensé − encore réservé : ce qu'il reste vraiment de libre. */
+  realRemaining: number
+  /** Détail des dépenses hors budget, du plus gros au plus petit. */
+  unbudgeted: UnbudgetedSlice[]
+}
+
+/**
+ * Vue « honnête » du mois : les dépenses faites dans des catégories sans budget
+ * n'apparaissent dans aucune jauge, ce qui donne l'illusion qu'il reste plus
+ * d'argent qu'en réalité. On les soustrait donc explicitement ici, au lieu de
+ * réécrire les budgets de l'utilisateur.
+ */
+export function realAvailability(data: AppData, period: Period, todayIso?: string): RealAvailability {
+  const budgetedRoots = alive(data.budgets).map((b) => b.categoryId)
+  // Une catégorie est « couverte » si elle-même ou un de ses parents a un budget.
+  const covered = new Set<string>()
+  for (const root of budgetedRoots) {
+    for (const id of categoryWithChildren(root, data.categories)) covered.add(id)
+  }
+
+  const categoryById = new Map(alive(data.categories).map((c) => [c.id, c]))
+  const expenses = alive(data.transactions).filter(
+    (t) => t.type === 'expense' && inPeriod(t.date, period),
+  )
+
+  let spentBudgeted = 0
+  const unbudgetedMap = new Map<string | null, number>()
+  for (const t of expenses) {
+    if (t.categoryId && covered.has(t.categoryId)) {
+      spentBudgeted += t.amount
+    } else {
+      const key = t.categoryId ?? null
+      unbudgetedMap.set(key, (unbudgetedMap.get(key) ?? 0) + t.amount)
+    }
+  }
+
+  const spentUnbudgeted = [...unbudgetedMap.values()].reduce((a, b) => a + b, 0)
+  const budgetReserved = budgetStatuses(data, period, todayIso).reduce(
+    (sum, s) => sum + Math.max(0, s.budget.monthlyAmount - s.spent),
+    0,
+  )
+  const { reference } = budgetAllocation(data, todayIso)
+  const totalSpent = spentBudgeted + spentUnbudgeted
+
+  const unbudgeted: UnbudgetedSlice[] = [...unbudgetedMap.entries()]
+    .map(([id, amount]) => ({ category: id ? (categoryById.get(id) ?? null) : null, amount }))
+    .sort((a, b) => b.amount - a.amount)
+
+  return {
+    reference,
+    totalSpent,
+    spentBudgeted,
+    spentUnbudgeted,
+    budgetReserved,
+    realRemaining: reference - totalSpent - budgetReserved,
+    unbudgeted,
+  }
+}
+
 export type BudgetLevel = 'ok' | 'warning' | 'over'
 
 export interface BudgetStatus {
   budget: Budget
   category: Category
   spent: number
-  /** Part de `spent` provenant des abonnements/prêts (le reste = opérations). */
+  /** Part de `spent` venant d'opérations générées par un abonnement ou un prêt. */
   subscriptionSpent: number
   /** 0..n — 1 = budget consommé. */
   ratio: number
@@ -164,19 +238,24 @@ export function budgetStatuses(data: AppData, period: Period, todayIso?: string)
   const categories = alive(data.categories)
   const byId = new Map(categories.map((c) => [c.id, c]))
   const { elapsedDays } = periodProgress(period, todayIso)
-  const today = todayIso ?? period.end
   const statuses: BudgetStatus[] = []
   for (const budget of alive(data.budgets)) {
     const category = byId.get(budget.categoryId)
     if (!category) continue
-    // Les abonnements/prêts de la catégorie comptent dans la consommation du budget.
-    const subscriptionSpent = committedForCategories(
-      data.subscriptions,
-      categoryWithChildren(budget.categoryId, data.categories),
-      period,
-      today,
-    )
-    const spent = spentForCategory(budget.categoryId, data, period) + subscriptionSpent
+    // Les prélèvements sont devenus de vraies opérations : ils sont déjà comptés
+    // dans `spentForCategory`. On isole juste leur part, à titre informatif.
+    const spent = spentForCategory(budget.categoryId, data, period)
+    const ids = categoryWithChildren(budget.categoryId, data.categories)
+    const subscriptionSpent = alive(data.transactions)
+      .filter(
+        (t) =>
+          t.type === 'expense' &&
+          t.subscriptionId &&
+          t.categoryId &&
+          ids.has(t.categoryId) &&
+          inPeriod(t.date, period),
+      )
+      .reduce((sum, t) => sum + t.amount, 0)
     const ratio = budget.monthlyAmount > 0 ? spent / budget.monthlyAmount : 0
     const level: BudgetLevel =
       ratio >= 1 ? 'over' : ratio >= data.settings.warnThreshold / 100 ? 'warning' : 'ok'

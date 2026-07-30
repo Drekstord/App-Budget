@@ -47,6 +47,10 @@ export interface Transaction extends BaseEntity {
   categoryId: string | null
   note: string
   payee: string
+  /** Abonnement/prêt qui a généré automatiquement cette opération, le cas échéant. */
+  subscriptionId?: string | null
+  /** Date de l'échéance générée (YYYY-MM-DD), pour ne jamais la recréer deux fois. */
+  occurrence?: string | null
 }
 
 export interface Budget extends BaseEntity {
