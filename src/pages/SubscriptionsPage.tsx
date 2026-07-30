@@ -269,13 +269,13 @@ export function SubscriptionsPage() {
                       {sub.kind === 'loan' ? '🏛️' : (cat?.icon ?? '💳')}
                     </span>
                     <span className="row-main">
-                      <span className="row-title">
+                      <span className="row-title has-badge">
                         {activeNow && nextOccurrence(sub, today) && (
                           <span className="visually-hidden">
                             Prochaine échéance le {nextOccurrence(sub, today)}.{' '}
                           </span>
                         )}
-                        {sub.name}
+                        <span className="row-text">{sub.name}</span>
                         {sub.essential && sub.kind !== 'loan' && (
                           <span className="pill pill-accent row-badge">indispensable</span>
                         )}

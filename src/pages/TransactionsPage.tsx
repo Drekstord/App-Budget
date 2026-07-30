@@ -174,8 +174,8 @@ export function TransactionsPage() {
                         {d.icon}
                       </span>
                       <span className="row-main">
-                        <span className="row-title">
-                          {d.title}
+                        <span className="row-title has-badge">
+                          <span className="row-text">{d.title}</span>
                           {/* Opération créée par un abonnement ou un prêt. */}
                           {t.subscriptionId && (
                             <span className="pill pill-accent row-badge">auto</span>

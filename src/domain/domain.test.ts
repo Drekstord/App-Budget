@@ -7,6 +7,7 @@ import {
   budgetStatuses,
   computeKpis,
   expensesByRootCategory,
+  initialBalanceForTarget,
   totalBalance,
 } from './stats.ts'
 import { computeAdvice } from './advice.ts'
@@ -146,6 +147,26 @@ describe('stats', () => {
   it('ignore les transactions supprimées (tombstones)', () => {
     const dead = tx({ accountId: 'a1', amount: 2000, deletedAt: '2026-07-02T00:00:00Z' })
     expect(accountBalance(a1, [dead])).toBe(100000)
+  })
+
+  it('recale le solde de départ pour atteindre un solde actuel donné', () => {
+    const txs = [
+      tx({ accountId: 'a1', amount: 2000 }),
+      tx({ type: 'income', accountId: 'a1', amount: 5000 }),
+    ]
+    // On veut afficher 250,00 € aujourd'hui malgré les mouvements existants.
+    const start = initialBalanceForTarget(a1, txs, 25000)
+    expect(accountBalance({ ...a1, initialBalance: start }, txs)).toBe(25000)
+  })
+
+  it('accepte un solde actuel négatif (découvert)', () => {
+    const txs = [tx({ accountId: 'a1', amount: 2000 })]
+    const start = initialBalanceForTarget(a1, txs, -31050)
+    expect(accountBalance({ ...a1, initialBalance: start }, txs)).toBe(-31050)
+  })
+
+  it('sans mouvement, le solde de départ est le solde visé', () => {
+    expect(initialBalanceForTarget(a2, [], -5000)).toBe(-5000)
   })
 
   it('agrège les dépenses par catégorie racine', () => {

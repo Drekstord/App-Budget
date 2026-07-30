@@ -644,9 +644,23 @@ svg.chev {
   align-items: center;
 }
 
+/* Titre accompagné d'une pastille : seul le libellé est tronqué, jamais la
+   pastille — sinon « par défaut » devient « P… ». */
+.row-title.has-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.row-title.has-badge > .row-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .row-badge {
-  margin-left: 0.4rem;
-  vertical-align: 1px;
+  flex: none;
 }
 
 .day-sep {
@@ -794,6 +808,25 @@ textarea:focus {
   margin: 0;
   font-weight: 500;
   color: var(--ink);
+}
+
+/* Champ montant + bascule de signe (le pavé décimal mobile n'a pas de « − »). */
+.signed-field {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.signed-field input {
+  flex: 1;
+  min-width: 0;
+}
+
+.signed-field .btn {
+  flex: none;
+  min-width: 48px;
+  min-height: 44px;
+  font-size: 1.15rem;
+  padding: 0.25rem 0.6rem;
 }
 
 .field-inline input[type='checkbox'] {

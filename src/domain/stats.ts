@@ -16,6 +16,20 @@ export function accountBalance(account: Account, transactions: Transaction[]): n
   return balance
 }
 
+/**
+ * Solde de départ à enregistrer pour que le compte affiche `target` aujourd'hui,
+ * sans toucher aux opérations déjà saisies. Permet de recaler un compte sur ce
+ * que la banque affiche, y compris un solde négatif.
+ */
+export function initialBalanceForTarget(
+  account: Account,
+  transactions: Transaction[],
+  target: number,
+): number {
+  const movements = accountBalance(account, transactions) - account.initialBalance
+  return target - movements
+}
+
 export function totalBalance(accounts: Account[], transactions: Transaction[]): number {
   return alive(accounts)
     .filter((a) => !a.archived)
