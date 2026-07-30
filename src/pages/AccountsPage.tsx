@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useStore } from '../store/useStore.ts'
 import { alive, type Account, type AccountType } from '../domain/types.ts'
 import { centsToInput, formatEUR, parseAmountToCents } from '../domain/money.ts'
-import { accountBalance, totalBalance } from '../domain/stats.ts'
+import { accountBalance, initialBalanceForTarget, totalBalance } from '../domain/stats.ts'
 import { Modal } from '../components/Modal.tsx'
 import { IconEdit, IconPlus } from '../components/icons.tsx'
 
@@ -33,32 +33,48 @@ export function AccountsPage() {
   const [editing, setEditing] = useState<Account | null>(null)
   const [name, setName] = useState('')
   const [type, setType] = useState<AccountType>('checking')
-  const [initialBalance, setInitialBalance] = useState('0')
+  // On saisit le solde *actuel* (celui affiché par la banque) : le solde de
+  // départ est recalculé pour retomber dessus, sans toucher aux opérations.
+  const [balance, setBalance] = useState('0')
   const [overdraft, setOverdraft] = useState('0')
   const [error, setError] = useState('')
 
   if (!data) return null
   const accounts = alive(data.accounts).filter((a) => !a.archived)
+  const movementCount = editing
+    ? alive(data.transactions).filter(
+        (t) => t.accountId === editing.id || t.toAccountId === editing.id,
+      ).length
+    : 0
 
   const openForm = (account: Account | null) => {
     setEditing(account)
     setName(account?.name ?? '')
     setType(account?.type ?? 'checking')
-    setInitialBalance(account ? centsToInput(account.initialBalance) : '0')
+    setBalance(account ? centsToInput(accountBalance(account, data.transactions)) : '0')
     setOverdraft(account?.overdraft ? centsToInput(account.overdraft) : '0')
     setError('')
     setOpen(true)
   }
 
+  /** Inverse le signe : le pavé décimal mobile n'offre pas toujours le « − ». */
+  const toggleSign = () => {
+    setBalance((v) => {
+      const t = v.trim()
+      if (t === '' || t === '0' || t === '0,00') return t
+      return t.startsWith('-') ? t.slice(1) : `-${t}`
+    })
+  }
+
   const save = async () => {
-    const cents = parseAmountToCents(initialBalance)
+    const cents = parseAmountToCents(balance)
     const overdraftCents = parseAmountToCents(overdraft)
     if (!name.trim()) {
       setError('Donne un nom au compte.')
       return
     }
     if (cents === null) {
-      setError('Solde initial invalide.')
+      setError('Solde invalide. Exemples : 1250,40 ou -310,50.')
       return
     }
     if (overdraftCents === null || overdraftCents < 0) {
@@ -69,7 +85,7 @@ export function AccountsPage() {
       await updateAccount(editing.id, {
         name: name.trim(),
         type,
-        initialBalance: cents,
+        initialBalance: initialBalanceForTarget(editing, data.transactions, cents),
         overdraft: overdraftCents,
         icon: TYPE_ICONS[type],
       })
@@ -124,15 +140,13 @@ export function AccountsPage() {
                   {a.icon}
                 </span>
                 <span className="row-main">
-                  <span className="row-title">
-                    {a.name}
-                    {data.settings.defaultAccountId === a.id && (
-                      <span className="pill pill-accent row-badge">par défaut</span>
-                    )}
-                  </span>
+                  {/* Le nom garde toute la largeur : « par défaut » et le
+                      découvert vivent sur la ligne secondaire. */}
+                  <span className="row-title">{a.name}</span>
                   <span className="row-meta">
                     {TYPE_LABELS[a.type]}
                     {a.overdraft > 0 && ` · découvert ${formatEUR(a.overdraft)}`}
+                    {data.settings.defaultAccountId === a.id && ' · par défaut'}
                   </span>
                 </span>
                 <span className="amount">{formatEUR(accountBalance(a, data.transactions))}</span>
@@ -178,13 +192,38 @@ export function AccountsPage() {
             </select>
           </div>
           <div className="field">
-            <label htmlFor="acc-balance">Solde initial (€)</label>
-            <input
-              id="acc-balance"
-              inputMode="decimal"
-              value={initialBalance}
-              onChange={(e) => setInitialBalance(e.target.value)}
-            />
+            <label htmlFor="acc-balance">
+              {editing ? 'Solde actuel (€)' : 'Solde de départ (€)'}
+            </label>
+            <div className="signed-field">
+              <input
+                id="acc-balance"
+                inputMode="decimal"
+                value={balance}
+                onChange={(e) => setBalance(e.target.value)}
+                placeholder="0,00"
+              />
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={toggleSign}
+                aria-label={
+                  balance.trim().startsWith('-')
+                    ? 'Rendre le solde positif'
+                    : 'Rendre le solde négatif'
+                }
+                title="Inverser le signe"
+              >
+                ±
+              </button>
+            </div>
+            <p className="hint">
+              {editing
+                ? movementCount > 0
+                  ? `Ce que ta banque affiche aujourd’hui. Un montant négatif est accepté (ex. -310,50). Tes ${movementCount} opération${movementCount > 1 ? 's' : ''} sur ce compte sont conservées : c’est le solde de départ qui est recalculé.`
+                  : 'Ce que ta banque affiche aujourd’hui. Un montant négatif est accepté (ex. -310,50).'
+                : 'Le solde du compte au moment où tu l’ajoutes. Un montant négatif est accepté (ex. -310,50).'}
+            </p>
           </div>
           <div className="field">
             <label htmlFor="acc-overdraft">Découvert autorisé (€)</label>
