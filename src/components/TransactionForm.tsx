@@ -7,6 +7,7 @@ import { parseReceipt, type ParsedReceipt } from '../domain/receipt.ts'
 import { computeTransactionAlerts } from '../domain/alerts.ts'
 import { notifySystem, useToasts } from '../store/toasts.ts'
 import { Modal } from './Modal.tsx'
+import { IconBackspace, IconCamera } from './icons.tsx'
 
 interface TransactionFormProps {
   open: boolean
@@ -22,6 +23,9 @@ const TYPE_LABELS: Record<TransactionType, string> = {
 }
 
 type ScanState = 'idle' | 'processing' | 'done' | 'error'
+
+/** Touches du pavé : chiffres, séparateur décimal, effacement. */
+const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', 'del'] as const
 
 export function TransactionForm({ open, onClose, transaction }: TransactionFormProps) {
   const data = useStore((s) => s.data)
@@ -83,13 +87,25 @@ export function TransactionForm({ open, onClose, transaction }: TransactionFormP
     setScanState('idle')
     setScanProgress(0)
     setScanSummary('')
-    setTimeout(() => amountRef.current?.focus(), 50)
   }, [open, transaction, defaultAccountId])
 
   if (!data) return null
   const categories = alive(data.categories).filter(
     (c) => c.kind === (type === 'income' ? 'income' : 'expense'),
   )
+
+  /** Frappe du pavé : on n'accepte qu'un séparateur et deux décimales. */
+  const press = (key: string) => {
+    setError('')
+    setAmount((cur) => {
+      if (key === 'del') return cur.slice(0, -1)
+      if (key === ',') return cur.includes(',') ? cur : (cur === '' ? '0,' : cur + ',')
+      const [, dec] = cur.split(',')
+      if (dec !== undefined && dec.length >= 2) return cur
+      if (cur === '0') return key
+      return cur + key
+    })
+  }
 
   /** Catégorie suggérée : d'abord l'historique du même marchand, sinon l'indice du ticket. */
   const suggestCategory = (parsed: ParsedReceipt): Category | null => {
@@ -218,11 +234,25 @@ export function TransactionForm({ open, onClose, transaction }: TransactionFormP
     onClose()
   }
 
+  const scanButton = !transaction && (
+    <button
+      type="button"
+      className="icon-btn"
+      disabled={scanState === 'processing'}
+      onClick={() => scanInputRef.current?.click()}
+      aria-label="Scanner un ticket de caisse"
+      title="Scanner un ticket de caisse"
+    >
+      <IconCamera />
+    </button>
+  )
+
   return (
     <Modal
       open={open}
       onClose={onClose}
       title={transaction ? 'Modifier l’opération' : 'Nouvelle opération'}
+      action={scanButton || undefined}
     >
       <form
         onSubmit={(e) => {
@@ -231,17 +261,7 @@ export function TransactionForm({ open, onClose, transaction }: TransactionFormP
         }}
       >
         {!transaction && (
-          <div className="field">
-            <button
-              type="button"
-              className="btn"
-              style={{ width: '100%' }}
-              disabled={scanState === 'processing'}
-              onClick={() => scanInputRef.current?.click()}
-            >
-              <span aria-hidden="true">📷</span>
-              {scanState === 'processing' ? 'Lecture du ticket…' : 'Scanner un ticket de caisse'}
-            </button>
+          <>
             <input
               ref={scanInputRef}
               type="file"
@@ -278,33 +298,31 @@ export function TransactionForm({ open, onClose, transaction }: TransactionFormP
                 )}
               </p>
             )}
-          </div>
+          </>
         )}
 
-        <div className="field">
-          <span className="field-label" id="tx-type-label">
-            Type
-          </span>
-          <div className="chip-row" role="group" aria-labelledby="tx-type-label">
-            {(Object.keys(TYPE_LABELS) as TransactionType[]).map((t) => (
-              <button
-                key={t}
-                type="button"
-                className="chip"
-                aria-pressed={type === t}
-                onClick={() => {
-                  setType(t)
-                  setCategoryId(null)
-                }}
-              >
-                {TYPE_LABELS[t]}
-              </button>
-            ))}
-          </div>
+        {/* Type d'opération : trois onglets segmentés, sans libellé superflu. */}
+        <div className="segmented" role="group" aria-label="Type d’opération">
+          {(Object.keys(TYPE_LABELS) as TransactionType[]).map((t) => (
+            <button
+              key={t}
+              type="button"
+              aria-pressed={type === t}
+              onClick={() => {
+                setType(t)
+                setCategoryId(null)
+              }}
+            >
+              {TYPE_LABELS[t]}
+            </button>
+          ))}
         </div>
 
-        <div className="field">
-          <label htmlFor="tx-amount">Montant (€)</label>
+        {/* Le montant est le cœur de la saisie : champ réel, affiché en grand. */}
+        <div className="amount-field">
+          <label htmlFor="tx-amount" className="visually-hidden">
+            Montant en euros
+          </label>
           <input
             id="tx-amount"
             ref={amountRef}
@@ -313,16 +331,32 @@ export function TransactionForm({ open, onClose, transaction }: TransactionFormP
             placeholder="0,00"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            style={{ fontSize: '1.4rem', fontWeight: 700 }}
+            className="amount-input"
           />
+          <span className="amount-unit" aria-hidden="true">
+            €
+          </span>
+        </div>
+
+        <div className="numpad" aria-label="Pavé numérique">
+          {KEYS.map((k) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => press(k)}
+              aria-label={k === 'del' ? 'Effacer le dernier chiffre' : k === ',' ? 'Virgule' : k}
+            >
+              {k === 'del' ? <IconBackspace /> : k}
+            </button>
+          ))}
         </div>
 
         {type !== 'transfer' && (
-          <div className="field">
+          <div className="field" style={{ marginTop: '0.85rem' }}>
             <span className="field-label" id="tx-cat-label">
               Catégorie
             </span>
-            <div className="chip-row" role="group" aria-labelledby="tx-cat-label">
+            <div className="chip-row chip-scroll" role="group" aria-labelledby="tx-cat-label">
               {categories.map((c) => (
                 <button
                   key={c.id}
@@ -339,46 +373,71 @@ export function TransactionForm({ open, onClose, transaction }: TransactionFormP
           </div>
         )}
 
-        <div className="field">
-          <label htmlFor="tx-account">{type === 'transfer' ? 'Depuis le compte' : 'Compte'}</label>
-          <select id="tx-account" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
+        <div className={type === 'transfer' ? 'field' : 'grid-2'}>
+          <div className="field">
+            <label htmlFor="tx-account">
+              {type === 'transfer' ? 'Depuis le compte' : 'Compte'}
+            </label>
+            <select
+              id="tx-account"
+              value={accountId}
+              onChange={(e) => setAccountId(e.target.value)}
+            >
+              {accounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          {type !== 'transfer' && (
+            <div className="field">
+              <label htmlFor="tx-date">Date</label>
+              <input
+                id="tx-date"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
+            </div>
+          )}
         </div>
 
         {type === 'transfer' && (
-          <div className="field">
-            <label htmlFor="tx-to-account">Vers le compte</label>
-            <select
-              id="tx-to-account"
-              value={toAccountId}
-              onChange={(e) => setToAccountId(e.target.value)}
-            >
-              <option value="">— Choisir —</option>
-              {accounts
-                .filter((a) => a.id !== accountId)
-                .map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-            </select>
-          </div>
-        )}
-
-        <div className="field">
-          <label htmlFor="tx-date">Date</label>
-          <input id="tx-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        </div>
-
-        {showDetails ? (
           <>
             <div className="field">
-              <label htmlFor="tx-payee">Bénéficiaire / marchand</label>
+              <label htmlFor="tx-to-account">Vers le compte</label>
+              <select
+                id="tx-to-account"
+                value={toAccountId}
+                onChange={(e) => setToAccountId(e.target.value)}
+              >
+                <option value="">— Choisir —</option>
+                {accounts
+                  .filter((a) => a.id !== accountId)
+                  .map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="tx-date-transfer">Date</label>
+              <input
+                id="tx-date-transfer"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
+            </div>
+          </>
+        )}
+
+        {showDetails ? (
+          <div className="grid-2">
+            <div className="field">
+              <label htmlFor="tx-payee">Bénéficiaire</label>
               <input
                 id="tx-payee"
                 value={payee}
@@ -390,10 +449,10 @@ export function TransactionForm({ open, onClose, transaction }: TransactionFormP
               <label htmlFor="tx-note">Note</label>
               <input id="tx-note" value={note} onChange={(e) => setNote(e.target.value)} />
             </div>
-          </>
+          </div>
         ) : (
           <button type="button" className="btn btn-ghost" onClick={() => setShowDetails(true)}>
-            + Ajouter une note ou un marchand
+            + Bénéficiaire ou note
           </button>
         )}
 
@@ -403,7 +462,7 @@ export function TransactionForm({ open, onClose, transaction }: TransactionFormP
           </p>
         )}
 
-        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+        <div className="sheet-actions">
           {transaction && (
             <button type="button" className="btn btn-danger" onClick={() => void remove()}>
               Supprimer

@@ -4,6 +4,7 @@ import { alive, type Transaction } from '../domain/types.ts'
 import { formatEUR } from '../domain/money.ts'
 import { inPeriod, periodForDate, todayISO } from '../domain/periods.ts'
 import { TransactionForm } from '../components/TransactionForm.tsx'
+import { IconSearch } from '../components/icons.tsx'
 
 const dateHeading = new Intl.DateTimeFormat('fr-FR', {
   weekday: 'long',
@@ -44,7 +45,9 @@ export function TransactionsPage() {
         }
         return true
       })
-      .sort((a, b) => (a.date === b.date ? b.createdAt.localeCompare(a.createdAt) : b.date.localeCompare(a.date)))
+      .sort((a, b) =>
+        a.date === b.date ? b.createdAt.localeCompare(a.createdAt) : b.date.localeCompare(a.date),
+      )
   }, [data, search, periodFilter, categoryFilter, accountFilter])
 
   if (!data) return null
@@ -52,113 +55,138 @@ export function TransactionsPage() {
   const accounts = alive(data.accounts)
   const categoryById = new Map(categories.map((c) => [c.id, c]))
   const accountById = new Map(accounts.map((a) => [a.id, a]))
+  const activeFilters =
+    (periodFilter === 'current' ? 0 : 1) + (categoryFilter ? 1 : 0) + (accountFilter ? 1 : 0)
 
-  const groups: { date: string; items: Transaction[] }[] = []
+  const groups: { date: string; items: Transaction[]; total: number }[] = []
   for (const t of filtered) {
+    const signed = t.type === 'expense' ? -t.amount : t.type === 'income' ? t.amount : 0
     const last = groups[groups.length - 1]
-    if (last && last.date === t.date) last.items.push(t)
-    else groups.push({ date: t.date, items: [t] })
+    if (last && last.date === t.date) {
+      last.items.push(t)
+      last.total += signed
+    } else {
+      groups.push({ date: t.date, items: [t], total: signed })
+    }
   }
 
   const describe = (t: Transaction): { icon: string; title: string; sub: string } => {
     if (t.type === 'transfer') {
       const from = accountById.get(t.accountId)?.name ?? '?'
       const to = accountById.get(t.toAccountId ?? '')?.name ?? '?'
-      return { icon: '🔁', title: t.note || 'Virement', sub: `${from} → ${to}` }
+      return { icon: '⇄', title: t.note || 'Virement', sub: `${from} → ${to}` }
     }
     const cat = categoryById.get(t.categoryId ?? '')
     return {
-      // Les prélèvements générés automatiquement sont repérables d'un coup d'œil.
-      icon: t.subscriptionId ? '🔁' : (cat?.icon ?? '❓'),
+      icon: cat?.icon ?? '❓',
       title: t.payee || cat?.name || 'Sans catégorie',
       sub: [cat?.name, accountById.get(t.accountId)?.name, t.note].filter(Boolean).join(' · '),
     }
   }
 
   return (
-    <div className="stack">
-      <div className="filters-row" role="search">
+    <>
+      <div className="search-field">
+        <IconSearch className="search-icon" />
         <input
           type="search"
-          placeholder="Rechercher…"
+          placeholder="Rechercher une opération…"
           aria-label="Rechercher dans les opérations"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <select
-          aria-label="Filtrer par période"
-          value={periodFilter}
-          onChange={(e) => setPeriodFilter(e.target.value as PeriodFilter)}
-        >
-          <option value="current">Mois en cours</option>
-          <option value="90d">3 derniers mois</option>
-          <option value="all">Tout</option>
-        </select>
-        <select
-          aria-label="Filtrer par catégorie"
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-        >
-          <option value="">Toutes catégories</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label="Filtrer par compte"
-          value={accountFilter}
-          onChange={(e) => setAccountFilter(e.target.value)}
-        >
-          <option value="">Tous comptes</option>
-          {accounts.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-            </option>
-          ))}
-        </select>
       </div>
+
+      {/* Les filtres restent repliés : au quotidien, on consulte le mois en cours. */}
+      <details className="filters">
+        <summary className="more-summary">
+          Filtrer
+          {activeFilters > 0 && <span className="pill pill-accent">{activeFilters}</span>}
+        </summary>
+        <div className="filters-row">
+          <select
+            aria-label="Filtrer par période"
+            value={periodFilter}
+            onChange={(e) => setPeriodFilter(e.target.value as PeriodFilter)}
+          >
+            <option value="current">Mois en cours</option>
+            <option value="90d">3 derniers mois</option>
+            <option value="all">Tout</option>
+          </select>
+          <select
+            aria-label="Filtrer par catégorie"
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+          >
+            <option value="">Toutes catégories</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label="Filtrer par compte"
+            value={accountFilter}
+            onChange={(e) => setAccountFilter(e.target.value)}
+          >
+            <option value="">Tous comptes</option>
+            {accounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </details>
 
       {groups.length === 0 ? (
         <div className="empty-state">
           <p>Aucune opération pour ces critères.</p>
-          <p>Ajoute ta première dépense avec le bouton +.</p>
+          <p>Ajoute ta première dépense avec le bouton central.</p>
         </div>
       ) : (
         groups.map((group) => (
           <section key={group.date} aria-label={dateHeading.format(new Date(group.date))}>
-            <p className="date-heading">{dateHeading.format(new Date(group.date))}</p>
-            <ul className="list card" style={{ padding: '0 0.75rem' }}>
+            <div className="day-sep">
+              <span>{dateHeading.format(new Date(group.date))}</span>
+              <span className="amount">
+                {group.total > 0 ? '+' : ''}
+                {formatEUR(group.total)}
+              </span>
+            </div>
+            <ul className="rows card card-tight">
               {group.items.map((t) => {
                 const d = describe(t)
                 const sign = t.type === 'expense' ? '-' : t.type === 'income' ? '+' : ''
                 return (
-                  <li key={t.id} className="list-item">
-                    <span className="item-icon" aria-hidden="true">
-                      {d.icon}
-                    </span>
-                    <span className="item-body">
-                      <span className="item-title">{d.title}</span>
-                      <br />
-                      <span className="item-sub">{d.sub}</span>
-                    </span>
-                    <span
-                      className={`amount ${t.type === 'income' ? 'amount-positive' : 'amount-negative'}`}
-                    >
-                      {sign}
-                      {formatEUR(t.amount)}
-                    </span>
+                  <li key={t.id} className="row" style={{ padding: 0 }}>
                     <button
                       type="button"
-                      className="icon-btn"
+                      className="row-btn"
                       aria-label={`Modifier : ${d.title}, ${formatEUR(t.amount)}`}
                       onClick={() => {
                         setEditing(t)
                         setFormOpen(true)
                       }}
                     >
-                      ✏️
+                      <span className="glyph" aria-hidden="true">
+                        {d.icon}
+                      </span>
+                      <span className="row-main">
+                        <span className="row-title">
+                          {d.title}
+                          {/* Opération créée par un abonnement ou un prêt. */}
+                          {t.subscriptionId && (
+                            <span className="pill pill-accent row-badge">auto</span>
+                          )}
+                        </span>
+                        <span className="row-meta">{d.sub}</span>
+                      </span>
+                      <span className={`amount ${t.type === 'income' ? 'amount-in' : ''}`}>
+                        {sign}
+                        {formatEUR(t.amount)}
+                      </span>
                     </button>
                   </li>
                 )
@@ -168,19 +196,7 @@ export function TransactionsPage() {
         ))
       )}
 
-      <button
-        type="button"
-        className="fab"
-        aria-label="Ajouter une opération"
-        onClick={() => {
-          setEditing(undefined)
-          setFormOpen(true)
-        }}
-      >
-        +
-      </button>
-
       <TransactionForm open={formOpen} onClose={() => setFormOpen(false)} transaction={editing} />
-    </div>
+    </>
   )
 }

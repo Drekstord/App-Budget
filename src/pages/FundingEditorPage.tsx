@@ -201,17 +201,16 @@ export function FundingEditorPage() {
             L’ordre indique dans quel compte piocher en premier. Protège une épargne en fixant un
             montant à préserver, ou en cochant « ne pas toucher ».
           </p>
-          <ul className="list">
+          <ul className="rows">
             {rules.map((rule, index) => {
               const account = accountById.get(rule.accountId)
               if (!account) return null
               return (
                 <li key={rule.accountId} className="rule-row">
                   <div className="rule-head">
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+                    <label className="field-inline">
                       <input
                         type="checkbox"
-                        style={{ width: 'auto', minHeight: 'auto' }}
                         checked={rule.included}
                         onChange={(e) => patchRule(rule.accountId, { included: e.target.checked })}
                         aria-label={`Inclure ${account.name} dans le plan`}
@@ -220,7 +219,7 @@ export function FundingEditorPage() {
                       <span>
                         <strong>{account.name}</strong>
                         <br />
-                        <span className="item-sub">
+                        <span className="row-meta">
                           {formatEUR(accountBalance(account, data.transactions))}
                         </span>
                       </span>
@@ -250,12 +249,9 @@ export function FundingEditorPage() {
                   </div>
                   {rule.included && (
                     <div className="rule-body">
-                      <label
-                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}
-                      >
+                      <label className="field-inline">
                         <input
                           type="checkbox"
-                          style={{ width: 'auto', minHeight: 'auto' }}
                           checked={rule.excluded}
                           onChange={(e) => patchRule(rule.accountId, { excluded: e.target.checked })}
                         />
@@ -274,17 +270,9 @@ export function FundingEditorPage() {
                         </div>
                       )}
                       {!rule.excluded && (account.overdraft ?? 0) > 0 && (
-                        <label
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            margin: '0.5rem 0 0',
-                          }}
-                        >
+                        <label className="field-inline" style={{ marginTop: '0.5rem' }}>
                           <input
                             type="checkbox"
-                            style={{ width: 'auto', minHeight: 'auto' }}
                             checked={rule.useOverdraft}
                             onChange={(e) =>
                               patchRule(rule.accountId, { useOverdraft: e.target.checked })

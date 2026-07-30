@@ -16,6 +16,7 @@ import {
 } from '../domain/subscriptions.ts'
 import { nextOccurrence } from '../domain/recurring.ts'
 import { Modal } from '../components/Modal.tsx'
+import { IconEdit, IconPlus } from '../components/icons.tsx'
 
 const monthYear = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' })
 
@@ -148,71 +149,79 @@ export function SubscriptionsPage() {
   }
 
   return (
-    <div className="stack">
-      <p className="chart-note">
-        Tes abonnements et prêts prélevés automatiquement. À chaque date d’échéance, l’app crée
-        l’opération correspondante dans <Link to="/transactions">Opérations</Link> — c’est elle qui
-        alimente le budget de la catégorie, comme une dépense saisie à la main.
-      </p>
-
+    <>
       {/* Synthèse */}
-      <section className="card">
-        <h2>Total mensuel des prélèvements</h2>
-        <div className="kpi-value" style={{ marginBottom: '0.5rem' }}>
-          {formatEUR(summary.totalMonthly)}
-          <span className="kpi-sub" style={{ fontWeight: 400 }}> / mois</span>
-        </div>
-        <div className="grid-2">
-          <div>
-            <div className="kpi-label">Indispensables</div>
-            <div className="amount">{formatEUR(summary.essentialMonthly)}</div>
+      <section className="card" aria-label="Total mensuel des prélèvements">
+        <span className="label">Prélevé chaque mois</span>
+        <p className="hero hero-sm">{formatEUR(summary.totalMonthly)}</p>
+        <p className="hint">
+          À chaque échéance, l’app crée l’opération dans{' '}
+          <Link to="/transactions">Opérations</Link> : c’est elle qui alimente le budget.
+        </p>
+        <ul className="legend" style={{ marginTop: '0.7rem' }}>
+          <li>
+            <span className="swatch" style={{ background: 'var(--accent)' }} />
+            Indispensables {formatEURCompact(summary.essentialMonthly)}
+          </li>
+          <li>
+            <span className="swatch" style={{ background: 'var(--accent-soft)' }} />
+            Optionnels {formatEURCompact(summary.nonEssentialMonthly)}
+          </li>
+        </ul>
+        {summary.totalMonthly > 0 && (
+          <div
+            className="split"
+            role="img"
+            aria-label={`${formatEUR(summary.essentialMonthly)} d’indispensables sur ${formatEUR(
+              summary.totalMonthly,
+            )}`}
+          >
+            <i
+              className="seg-spent"
+              style={{ width: `${(summary.essentialMonthly / summary.totalMonthly) * 100}%` }}
+            />
+            <i
+              className="seg-reserved"
+              style={{ width: `${(summary.nonEssentialMonthly / summary.totalMonthly) * 100}%` }}
+            />
           </div>
-          <div>
-            <div className="kpi-label">Non indispensables</div>
-            <div className="amount">{formatEUR(summary.nonEssentialMonthly)}</div>
-          </div>
-        </div>
+        )}
 
         {summary.byAccount.length > 0 && (
-          <>
-            <h3 style={{ fontSize: '0.9rem', margin: '1rem 0 0.4rem' }}>À provisionner par compte</h3>
-            <ul className="list">
+          <details style={{ marginTop: '0.5rem' }}>
+            <summary className="more-summary">À provisionner par compte</summary>
+            <ul className="rows">
               {summary.byAccount.map((a) => (
-                <li key={a.accountId ?? 'none'} className="list-item" style={{ minHeight: 40, padding: '0.35rem 0' }}>
-                  <span className="item-body">
-                    <span className="item-title" style={{ fontWeight: 500 }}>{a.name}</span>
+                <li key={a.accountId ?? 'none'} className="row" style={{ minHeight: 42 }}>
+                  <span className="row-main">
+                    <span className="row-title">{a.name}</span>
                   </span>
-                  <span className="amount">{formatEUR(a.monthly)} / mois</span>
+                  <span className="amount">{formatEUR(a.monthly)}</span>
                 </li>
               ))}
             </ul>
-            <p className="chart-note" style={{ marginBottom: 0 }}>
-              C’est le montant à virer chaque mois sur chaque compte de prélèvement pour couvrir ses
-              abonnements.
+            <p className="hint">
+              Montant à virer chaque mois sur chaque compte pour couvrir ses prélèvements.
             </p>
-          </>
+          </details>
         )}
       </section>
 
       {/* Comparaison au budget par catégorie */}
       {summary.byCategory.length > 0 && (
-        <section className="card">
-          <h2>Par catégorie vs budget</h2>
-          <p className="chart-note">
-            Prévisionnel de la période en cours ({period?.label}) : un abonnement annuel compte en
-            totalité dans son mois d’échéance. Le budget, lui, n’est consommé qu’une fois
-            l’opération créée automatiquement à la date du prélèvement.
-          </p>
-          <ul className="list">
+        <section className="card" aria-label="Prélèvements par catégorie">
+          <span className="label" style={{ marginBottom: '0.2rem' }}>
+            Par catégorie
+          </span>
+          <ul className="rows">
             {summary.byCategory.map((c) => (
-              <li key={c.categoryId ?? 'none'} className="list-item">
-                <span className="item-icon" aria-hidden="true">
+              <li key={c.categoryId ?? 'none'} className="row">
+                <span className="glyph glyph-sm" aria-hidden="true">
                   {c.categoryId ? (categoryById.get(c.categoryId)?.icon ?? '🏷️') : '—'}
                 </span>
-                <span className="item-body">
-                  <span className="item-title">{c.name}</span>
-                  <br />
-                  <span className="item-sub">
+                <span className="row-main">
+                  <span className="row-title">{c.name}</span>
+                  <span className="row-meta">
                     {c.budget !== null
                       ? `budget ${formatEURCompact(c.budget)}`
                       : 'pas de budget défini'}
@@ -220,79 +229,75 @@ export function SubscriptionsPage() {
                 </span>
                 <span className="amount" style={c.over ? { color: 'var(--critical)' } : undefined}>
                   {formatEUR(c.monthly)}
-                  {c.over && ' ⚠️'}
                 </span>
+                {c.over && <span className="pill pill-over">dépasse</span>}
               </li>
             ))}
           </ul>
-          {summary.byCategory.some((c) => c.over) && (
-            <p className="notice notice-warning" style={{ marginBottom: 0 }}>
-              <span aria-hidden="true">⚠️</span> Certaines catégories : le total des abonnements
-              dépasse déjà le budget mensuel.
-            </p>
-          )}
-          <p className="chart-note" style={{ marginBottom: 0 }}>
-            <Link to="/budgets">Ajuster les budgets →</Link>
+          <p className="hint">
+            Prévisionnel de {period?.label} : un abonnement annuel compte en totalité dans son mois
+            d’échéance. · <Link to="/budgets">Ajuster les budgets</Link>
           </p>
         </section>
       )}
 
       {/* Liste des prélèvements */}
-      <section className="card">
-        <h2>Mes prélèvements</h2>
+      <section className="card" aria-label="Mes prélèvements">
+        <span className="label" style={{ marginBottom: '0.2rem' }}>
+          Mes prélèvements
+        </span>
         {subs.length === 0 ? (
-          <p className="chart-note" style={{ margin: 0 }}>
+          <p className="hint" style={{ marginTop: 0 }}>
             Aucun prélèvement pour l’instant. Ajoute ton premier abonnement ou prêt.
           </p>
         ) : (
-          <ul className="list">
+          <ul className="rows">
             {subs.map((sub) => {
               const activeNow = isCommitmentActive(sub, today)
               const cat = sub.categoryId ? categoryById.get(sub.categoryId) : null
               const acc = sub.accountId ? accountById.get(sub.accountId) : null
               const remaining = loanRemaining(sub, today)
               return (
-                <li key={sub.id} className="list-item">
-                  <span className="item-icon" aria-hidden="true">
-                    {sub.kind === 'loan' ? '🏛️' : (cat?.icon ?? '💳')}
-                  </span>
-                  <span className="item-body">
-                    <span className="item-title">
-                      {activeNow && nextOccurrence(sub, today) && (
-                        <span className="visually-hidden">
-                          Prochaine échéance le {nextOccurrence(sub, today)}.{' '}
-                        </span>
-                      )}
-                      {sub.name}
-                      {sub.essential && sub.kind !== 'loan' && (
-                        <span className="pill-essential"> indispensable</span>
-                      )}
-                      {!activeNow && <span className="item-sub"> · en pause</span>}
-                    </span>
-                    <br />
-                    <span className="item-sub">
-                      {sub.kind === 'loan'
-                        ? `Prêt · le ${sub.dayOfMonth} · reste ${formatEURCompact(remaining)}${sub.endDate ? ` jusqu’en ${monthYear.format(new Date(sub.endDate + 'T00:00:00'))}` : ''}`
-                        : `${
-                            sub.frequency === 'yearly'
-                              ? `Annuel · le ${sub.dayOfMonth} ${MONTH_NAMES[(sub.dueMonth ?? 1) - 1]}`
-                              : `Mensuel · le ${sub.dayOfMonth}`
-                          }${cat ? ` · ${cat.name}` : ''}${acc ? ` · ${acc.name}` : ''}`}
-                    </span>
-                  </span>
-                  <span className="amount">
-                    {formatEUR(sub.amount)}
-                    {sub.frequency === 'yearly' && sub.kind !== 'loan' && (
-                      <span className="item-sub"> /an</span>
-                    )}
-                  </span>
+                <li key={sub.id} className="row" style={{ padding: 0 }}>
                   <button
                     type="button"
-                    className="icon-btn"
-                    aria-label={`Modifier ${sub.name}`}
+                    className="row-btn"
+                    aria-label={`Modifier ${sub.name}, ${formatEUR(sub.amount)}`}
                     onClick={() => openForm(sub)}
                   >
-                    ✏️
+                    <span className="glyph" aria-hidden="true">
+                      {sub.kind === 'loan' ? '🏛️' : (cat?.icon ?? '💳')}
+                    </span>
+                    <span className="row-main">
+                      <span className="row-title">
+                        {activeNow && nextOccurrence(sub, today) && (
+                          <span className="visually-hidden">
+                            Prochaine échéance le {nextOccurrence(sub, today)}.{' '}
+                          </span>
+                        )}
+                        {sub.name}
+                        {sub.essential && sub.kind !== 'loan' && (
+                          <span className="pill pill-accent row-badge">indispensable</span>
+                        )}
+                        {!activeNow && <span className="pill row-badge">en pause</span>}
+                      </span>
+                      <span className="row-meta">
+                        {sub.kind === 'loan'
+                          ? `Prêt · le ${sub.dayOfMonth} · reste ${formatEURCompact(remaining)}${sub.endDate ? ` jusqu’en ${monthYear.format(new Date(sub.endDate + 'T00:00:00'))}` : ''}`
+                          : `${
+                              sub.frequency === 'yearly'
+                                ? `Annuel · le ${sub.dayOfMonth} ${MONTH_NAMES[(sub.dueMonth ?? 1) - 1]}`
+                                : `Mensuel · le ${sub.dayOfMonth}`
+                            }${cat ? ` · ${cat.name}` : ''}${acc ? ` · ${acc.name}` : ''}`}
+                      </span>
+                    </span>
+                    <span className="amount">
+                      {formatEUR(sub.amount)}
+                      {sub.frequency === 'yearly' && sub.kind !== 'loan' && (
+                        <span className="env-cap"> /an</span>
+                      )}
+                    </span>
+                    <IconEdit className="chev" size={16} />
                   </button>
                 </li>
               )
@@ -301,13 +306,8 @@ export function SubscriptionsPage() {
         )}
       </section>
 
-      <button
-        type="button"
-        className="fab"
-        aria-label="Ajouter un prélèvement"
-        onClick={() => openForm(null)}
-      >
-        +
+      <button type="button" className="btn btn-primary" onClick={() => openForm(null)}>
+        <IconPlus size={18} /> Ajouter un prélèvement
       </button>
 
       <Modal
@@ -321,29 +321,24 @@ export function SubscriptionsPage() {
             void save()
           }}
         >
-          <div className="field">
-            <span className="field-label" id="sub-kind-label">Type</span>
-            <div className="chip-row" role="group" aria-labelledby="sub-kind-label">
-              <button
-                type="button"
-                className="chip"
-                aria-pressed={form.kind === 'subscription'}
-                onClick={() => patch({ kind: 'subscription' })}
-              >
-                Abonnement
-              </button>
-              <button
-                type="button"
-                className="chip"
-                aria-pressed={form.kind === 'loan'}
-                onClick={() => patch({ kind: 'loan' })}
-              >
-                Prêt
-              </button>
-            </div>
+          <div className="segmented" role="group" aria-label="Type de prélèvement">
+            <button
+              type="button"
+              aria-pressed={form.kind === 'subscription'}
+              onClick={() => patch({ kind: 'subscription' })}
+            >
+              Abonnement
+            </button>
+            <button
+              type="button"
+              aria-pressed={form.kind === 'loan'}
+              onClick={() => patch({ kind: 'loan' })}
+            >
+              Prêt
+            </button>
           </div>
 
-          <div className="field">
+          <div className="field" style={{ marginTop: '0.85rem' }}>
             <label htmlFor="sub-name">Nom</label>
             <input
               id="sub-name"
@@ -406,7 +401,7 @@ export function SubscriptionsPage() {
                       </option>
                     ))}
                   </select>
-                  <p className="chart-note" style={{ marginTop: '0.3rem' }}>
+                  <p className="hint">
                     Le montant complet sera compté dans le budget de ce mois-là, quand l’échéance
                     arrive.
                   </p>
@@ -459,10 +454,9 @@ export function SubscriptionsPage() {
 
           {form.kind === 'subscription' && (
             <div className="field">
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+              <label className="field-inline">
                 <input
                   type="checkbox"
-                  style={{ width: 'auto', minHeight: 'auto' }}
                   checked={form.essential}
                   onChange={(e) => patch({ essential: e.target.checked })}
                 />
@@ -472,10 +466,9 @@ export function SubscriptionsPage() {
           )}
 
           <div className="field">
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+            <label className="field-inline">
               <input
                 type="checkbox"
-                style={{ width: 'auto', minHeight: 'auto' }}
                 checked={form.active}
                 onChange={(e) => patch({ active: e.target.checked })}
               />
@@ -488,7 +481,7 @@ export function SubscriptionsPage() {
               {error}
             </p>
           )}
-          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+          <div className="sheet-actions">
             {editing && (
               <button type="button" className="btn btn-danger" onClick={() => void remove()}>
                 Supprimer
@@ -500,6 +493,6 @@ export function SubscriptionsPage() {
           </div>
         </form>
       </Modal>
-    </div>
+    </>
   )
 }
