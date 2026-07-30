@@ -4,6 +4,7 @@ import { alive, type Account, type AccountType } from '../domain/types.ts'
 import { centsToInput, formatEUR, parseAmountToCents } from '../domain/money.ts'
 import { accountBalance, totalBalance } from '../domain/stats.ts'
 import { Modal } from '../components/Modal.tsx'
+import { IconEdit, IconPlus } from '../components/icons.tsx'
 
 const TYPE_LABELS: Record<AccountType, string> = {
   checking: 'Compte courant',
@@ -99,49 +100,54 @@ export function AccountsPage() {
   }
 
   return (
-    <div className="stack">
-      <div className="kpi">
-        <div className="kpi-label">Solde total</div>
-        <div className="kpi-value">{formatEUR(totalBalance(data.accounts, data.transactions))}</div>
-      </div>
+    <>
+      <section className="card" aria-label="Solde total">
+        <span className="label">Solde total</span>
+        <p className="hero hero-sm">{formatEUR(totalBalance(data.accounts, data.transactions))}</p>
+        <p className="hint">
+          {accounts.length} compte{accounts.length > 1 ? 's' : ''} actif
+          {accounts.length > 1 ? 's' : ''}
+        </p>
+      </section>
 
-      <ul className="list card" style={{ padding: '0 0.75rem' }}>
-        {accounts.map((a) => (
-          <li key={a.id} className="list-item">
-            <span className="item-icon" aria-hidden="true">
-              {a.icon}
-            </span>
-            <span className="item-body">
-              <span className="item-title">
-                {a.name}
-                {data.settings.defaultAccountId === a.id && (
-                  <span className="item-sub"> · par défaut</span>
-                )}
-              </span>
-              <br />
-              <span className="item-sub">
-                {TYPE_LABELS[a.type]}
-                {a.overdraft > 0 && ` · découvert ${formatEUR(a.overdraft)}`}
-              </span>
-            </span>
-            <span className="amount">{formatEUR(accountBalance(a, data.transactions))}</span>
-            <button
-              type="button"
-              className="icon-btn"
-              aria-label={`Modifier le compte ${a.name}`}
-              onClick={() => openForm(a)}
-            >
-              ✏️
-            </button>
-          </li>
-        ))}
-      </ul>
+      <section className="card">
+        <ul className="rows">
+          {accounts.map((a) => (
+            <li key={a.id} className="row" style={{ padding: 0 }}>
+              <button
+                type="button"
+                className="row-btn"
+                aria-label={`Modifier le compte ${a.name}`}
+                onClick={() => openForm(a)}
+              >
+                <span className="glyph" aria-hidden="true">
+                  {a.icon}
+                </span>
+                <span className="row-main">
+                  <span className="row-title">
+                    {a.name}
+                    {data.settings.defaultAccountId === a.id && (
+                      <span className="pill pill-accent row-badge">par défaut</span>
+                    )}
+                  </span>
+                  <span className="row-meta">
+                    {TYPE_LABELS[a.type]}
+                    {a.overdraft > 0 && ` · découvert ${formatEUR(a.overdraft)}`}
+                  </span>
+                </span>
+                <span className="amount">{formatEUR(accountBalance(a, data.transactions))}</span>
+                <IconEdit className="chev" size={16} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
 
       <button type="button" className="btn btn-primary" onClick={() => openForm(null)}>
-        + Ajouter un compte
+        <IconPlus size={18} /> Ajouter un compte
       </button>
 
-      <p className="chart-note">
+      <p className="hint">
         Astuce : pour déplacer de l’argent entre deux comptes, ajoute une opération de type
         « Virement » depuis l’écran Opérations.
       </p>
@@ -189,17 +195,16 @@ export function AccountsPage() {
               onChange={(e) => setOverdraft(e.target.value)}
               placeholder="0"
             />
-            <p className="chart-note" style={{ margin: '0.3rem 0 0' }}>
+            <p className="hint">
               Montant jusqu’auquel ce compte peut passer en négatif sans frais. Utilisé par les
               plans de financement comme trésorerie mobilisable. 0 si aucun.
             </p>
           </div>
           {editing && (
             <div className="field">
-              <label>
+              <label className="field-inline">
                 <input
                   type="checkbox"
-                  style={{ width: 'auto', minHeight: 'auto', marginRight: '0.5rem' }}
                   checked={data.settings.defaultAccountId === editing.id}
                   onChange={(e) =>
                     void updateSettings({ defaultAccountId: e.target.checked ? editing.id : null })
@@ -214,7 +219,7 @@ export function AccountsPage() {
               {error}
             </p>
           )}
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div className="sheet-actions">
             {editing && (
               <button type="button" className="btn btn-danger" onClick={() => void remove()}>
                 Supprimer
@@ -226,6 +231,6 @@ export function AccountsPage() {
           </div>
         </form>
       </Modal>
-    </div>
+    </>
   )
 }

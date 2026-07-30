@@ -17,12 +17,13 @@ export const STATUS = {
   critical: '#d03b3b',
 } as const
 
+// Encre des graphiques alignée sur les jetons de l'interface (voir index.css).
 export const CHART_INK: Record<
   'light' | 'dark',
   { text: string; muted: string; grid: string; axis: string; surface: string }
 > = {
-  light: { text: '#0b0b0b', muted: '#898781', grid: '#e1e0d9', axis: '#c3c2b7', surface: '#fcfcfb' },
-  dark: { text: '#ffffff', muted: '#898781', grid: '#2c2c2a', axis: '#383835', surface: '#1a1a19' },
+  light: { text: '#101720', muted: '#6b7583', grid: '#e3e6ea', axis: '#c8cdd4', surface: '#ffffff' },
+  dark: { text: '#eef1f5', muted: '#8b95a3', grid: '#262f3a', axis: '#3a4552', surface: '#171d25' },
 }
 
 export function slotColor(slot: number, mode: 'light' | 'dark'): string {

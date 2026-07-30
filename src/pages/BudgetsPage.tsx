@@ -6,13 +6,14 @@ import { centsToInput, formatEUR, formatEURCompact, parseAmountToCents } from '.
 import { periodForDate, todayISO } from '../domain/periods.ts'
 import { budgetAllocation, budgetStatuses, realAvailability } from '../domain/stats.ts'
 import { Modal } from '../components/Modal.tsx'
+import { IconCheck, IconEdit } from '../components/icons.tsx'
 
 const dayLabel = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long' })
 
 type SortKey = 'ratio' | 'amountDesc' | 'amountAsc' | 'spentDesc' | 'name'
 
 const SORT_LABELS: Record<SortKey, string> = {
-  ratio: '% consommé (décroissant)',
+  ratio: '% consommé',
   amountDesc: 'Budget décroissant',
   amountAsc: 'Budget croissant',
   spentDesc: 'Dépensé décroissant',
@@ -26,6 +27,7 @@ export function BudgetsPage() {
   const [amount, setAmount] = useState('')
   const [error, setError] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('ratio')
+  const [sortOpen, setSortOpen] = useState(false)
 
   if (!data) return null
   const period = periodForDate(todayISO(), data.settings.monthStartDay)
@@ -74,154 +76,218 @@ export function BudgetsPage() {
   const allocation = budgetAllocation(data)
   const real = realAvailability(data, period)
 
+  // Barre du récap : part du revenu déjà budgétée, part libre.
+  const allocPct =
+    allocation.reference > 0
+      ? Math.max(0, Math.min(100, (allocation.totalBudgeted / allocation.reference) * 100))
+      : 0
+  const overAllocated = allocation.reference > 0 && allocation.remaining < 0
+
   return (
-    <div className="stack">
-      <p className="chart-note">Période : {period.label}</p>
+    <>
+      {/* 1 — Un seul récap : combien du revenu est déjà engagé, combien reste libre. */}
+      <section className="card" aria-label="Répartition du revenu">
+        <span className="label">Reste à attribuer</span>
+        <p
+          className={`hero hero-sm ${
+            allocation.reference === 0 ? '' : overAllocated ? 'hero-critical' : 'hero-good'
+          }`}
+        >
+          {allocation.reference > 0 ? formatEUR(allocation.remaining) : '—'}
+        </p>
 
-      <Link to="/prelevements" className="btn" style={{ textDecoration: 'none' }}>
-        💳 Abonnements & prêts
-      </Link>
-
-      <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <div>
-            <div className="kpi-label">Reste à attribuer</div>
-            <div
-              className="kpi-value"
-              style={{
-                color:
-                  allocation.reference === 0
-                    ? 'var(--text-2)'
-                    : allocation.remaining < 0
-                      ? 'var(--critical)'
-                      : 'var(--good)',
-              }}
-            >
-              {allocation.reference > 0 ? formatEUR(allocation.remaining) : '—'}
-            </div>
-          </div>
-          <div style={{ textAlign: 'right', fontSize: '0.82rem', color: 'var(--text-2)' }}>
-            <div>
-              Revenu de référence :{' '}
-              {allocation.reference > 0 ? formatEURCompact(allocation.reference) : 'non défini'}
-            </div>
-            <div>Déjà budgété : {formatEURCompact(allocation.totalBudgeted)}</div>
-          </div>
-        </div>
         {allocation.reference > 0 ? (
           <>
             <div
-              className={`gauge ${allocation.remaining < 0 ? 'gauge-over' : ''}`}
-              style={{ marginTop: '0.6rem' }}
-              role="progressbar"
-              aria-valuenow={Math.min(100, Math.round((allocation.totalBudgeted / allocation.reference) * 100))}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label="Part du revenu de référence déjà budgétée"
+              className="split"
+              role="img"
+              aria-label={`${formatEUR(allocation.totalBudgeted)} budgétés sur un revenu de référence de ${formatEUR(
+                allocation.reference,
+              )}`}
             >
-              <span style={{ width: `${Math.min(100, (allocation.totalBudgeted / allocation.reference) * 100)}%` }} />
+              <i
+                className={overAllocated ? 'seg-over' : 'seg-spent'}
+                style={{ width: `${allocPct}%` }}
+              />
             </div>
-            <p className="chart-note" style={{ marginBottom: 0 }}>
-              {allocation.remaining < 0
+            <ul className="legend">
+              <li>
+                <span
+                  className="swatch"
+                  style={{ background: overAllocated ? 'var(--critical)' : 'var(--accent)' }}
+                />
+                Budgété {formatEURCompact(allocation.totalBudgeted)}
+              </li>
+              <li>
+                <span className="swatch" style={{ background: 'var(--sunk)' }} />
+                Revenu {formatEURCompact(allocation.reference)}
+              </li>
+            </ul>
+            <p className="hint">
+              {overAllocated
                 ? `Tu as budgété ${formatEUR(-allocation.remaining)} de plus que ton revenu de référence.`
-                : `Il te reste ${formatEUR(allocation.remaining)} de ton revenu à répartir dans des catégories.`}{' '}
+                : `Il reste ${formatEUR(allocation.remaining)} de ton revenu à répartir.`}{' '}
               {allocation.referenceIsManual
-                ? 'Référence : revenu que tu as fixé dans les réglages.'
-                : 'Référence : moyenne de tes revenus des 3 derniers mois (modifiable dans les réglages).'}
+                ? 'Référence fixée dans les réglages.'
+                : 'Référence : moyenne des 3 derniers mois.'}
             </p>
           </>
         ) : (
-          <p className="chart-note" style={{ marginBottom: 0 }}>
-            Renseigne un <Link to="/reglages">revenu mensuel de référence</Link> (ou saisis des
-            revenus) pour savoir combien il te reste à répartir dans tes catégories.
+          <p className="hint">
+            Renseigne un <Link to="/reglages">revenu mensuel de référence</Link> pour savoir combien
+            il te reste à répartir.
           </p>
         )}
-      </div>
 
-      {/* Vue « honnête » : les dépenses hors budget rognent aussi le disponible. */}
-      {real.reference > 0 && (
-        <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <div>
-              <div className="kpi-label">Disponible réel ce mois</div>
-              <div
-                className="kpi-value"
-                style={{ color: real.realRemaining < 0 ? 'var(--critical)' : 'var(--good)' }}
-              >
-                {formatEUR(real.realRemaining)}
-              </div>
-              <div className="kpi-sub">après dépenses et enveloppes réservées</div>
+        {real.reference > 0 && (
+          <details className="data-table" style={{ marginTop: '0.6rem' }}>
+            <summary>
+              Disponible réel : {formatEUR(real.realRemaining)}
+              {real.spentUnbudgeted > 0 && ` (dont ${formatEUR(real.spentUnbudgeted)} hors budget)`}
+            </summary>
+            <div className="table-wrap">
+              <table className="data">
+                <caption className="visually-hidden">Détail du disponible réel</caption>
+                <tbody>
+                  <tr>
+                    <th scope="row">Revenu de référence</th>
+                    <td className="num">{formatEUR(real.reference)}</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">− Dépensé dans les budgets</th>
+                    <td className="num">{formatEUR(real.spentBudgeted)}</td>
+                  </tr>
+                  <tr style={real.spentUnbudgeted > 0 ? { color: 'var(--critical)' } : undefined}>
+                    <th scope="row">− Dépensé hors budget</th>
+                    <td className="num">{formatEUR(real.spentUnbudgeted)}</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">− Encore réservé dans les budgets</th>
+                    <td className="num">{formatEUR(real.budgetReserved)}</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">
+                      <strong>= Disponible réel</strong>
+                    </th>
+                    <td className="num">
+                      <strong>{formatEUR(real.realRemaining)}</strong>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-          </div>
-          <div className="table-wrap" style={{ marginTop: '0.6rem' }}>
-            <table className="data">
-              <caption className="visually-hidden">Détail du disponible réel</caption>
-              <tbody>
-                <tr>
-                  <th scope="row">Revenu de référence</th>
-                  <td className="num">{formatEUR(real.reference)}</td>
-                </tr>
-                <tr>
-                  <th scope="row">− Dépensé dans les budgets</th>
-                  <td className="num">{formatEUR(real.spentBudgeted)}</td>
-                </tr>
-                <tr>
-                  <th scope="row" style={real.spentUnbudgeted > 0 ? { color: 'var(--critical)' } : undefined}>
-                    − Dépensé hors budget
-                  </th>
-                  <td className="num" style={real.spentUnbudgeted > 0 ? { color: 'var(--critical)' } : undefined}>
-                    {formatEUR(real.spentUnbudgeted)}
-                  </td>
-                </tr>
-                <tr>
-                  <th scope="row">− Encore réservé dans les budgets</th>
-                  <td className="num">{formatEUR(real.budgetReserved)}</td>
-                </tr>
-                <tr>
-                  <th scope="row">
-                    <strong>= Disponible réel</strong>
-                  </th>
-                  <td className="num">
-                    <strong>{formatEUR(real.realRemaining)}</strong>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          {real.spentUnbudgeted > 0 && (
-            <p className="notice notice-warning" style={{ marginTop: '0.6rem', marginBottom: 0 }}>
-              <span aria-hidden="true">⚠️</span>
-              <span>
-                {formatEUR(real.spentUnbudgeted)} de dépenses ne sont couvertes par aucun budget :
-                elles n’apparaissent dans aucune jauge, mais elles réduisent bien ce qu’il te reste.
-              </span>
-            </p>
+          </details>
+        )}
+      </section>
+
+      {/* 2 — Toutes les enveloppes dans une seule carte, une ligne chacune. */}
+      <section className="card" aria-label="Enveloppes du mois">
+        <div className="row-between" style={{ alignItems: 'center', marginBottom: '0.2rem' }}>
+          <span className="label">Enveloppes</span>
+          {statuses.length > 1 && (
+            <button type="button" className="btn-ghost btn-sm" onClick={() => setSortOpen(true)}>
+              {SORT_LABELS[sortKey]} ⌄
+            </button>
           )}
         </div>
-      )}
 
-      {real.unbudgeted.length > 0 && (
-        <section className="card">
-          <h2>Dépenses hors budget ce mois</h2>
-          <p className="chart-note">
-            Ces catégories ont été dépensées sans budget défini. Fixe-leur une limite pour les
-            suivre, ou garde-les à l’œil ici.
+        {statuses.length === 0 ? (
+          <p className="hint" style={{ marginTop: 0 }}>
+            Aucune enveloppe pour l’instant. Choisis une catégorie ci-dessous pour lui fixer une
+            limite mensuelle.
           </p>
-          <ul className="list">
+        ) : (
+          <ul className="rows">
+            {statuses.map((s) => {
+              const pct = Math.round(s.ratio * 100)
+              const meterClass =
+                s.level === 'over' ? 'meter meter-over' : s.level === 'warning' ? 'meter meter-warning' : 'meter'
+              const alert =
+                s.level === 'over'
+                  ? `Dépassé de ${formatEUR(s.spent - s.budget.monthlyAmount)}`
+                  : s.projectedOverDate
+                    ? `Dépassement estimé le ${dayLabel.format(new Date(s.projectedOverDate))}`
+                    : null
+              return (
+                <li key={s.budget.id} className="env">
+                  <button
+                    type="button"
+                    className="env-btn"
+                    onClick={() => openEditor(s.category, s.budget.monthlyAmount)}
+                    aria-label={`${s.category.name} : ${formatEUR(s.spent)} dépensés sur ${formatEUR(
+                      s.budget.monthlyAmount,
+                    )}, soit ${pct} %. Modifier l’enveloppe.`}
+                  >
+                    <span className="env-head">
+                      <span className="glyph glyph-sm" aria-hidden="true">
+                        {s.category.icon}
+                      </span>
+                      <span className="row-main">
+                        <span className="row-title">{s.category.name}</span>
+                        {s.subscriptionSpent > 0 && (
+                          <span className="row-meta">
+                            dont {formatEURCompact(s.subscriptionSpent)} de prélèvements
+                          </span>
+                        )}
+                      </span>
+                      <span className="amount env-amount">
+                        {formatEUR(s.spent)}
+                        <span className="env-cap"> / {formatEURCompact(s.budget.monthlyAmount)}</span>
+                      </span>
+                      {/* Le pourcentage n'apparaît que s'il mérite l'attention. */}
+                      {s.level !== 'ok' && (
+                        <span className={`pill ${s.level === 'over' ? 'pill-over' : 'pill-warning'}`}>
+                          {pct} %
+                        </span>
+                      )}
+                      <IconEdit className="chev" size={16} />
+                    </span>
+                    <span className={meterClass} aria-hidden="true">
+                      <span style={{ width: `${Math.min(100, pct)}%` }} />
+                    </span>
+                    {alert && (
+                      <span
+                        className={`env-alert ${s.level === 'over' ? 'is-over' : 'is-warning'}`}
+                      >
+                        {alert}
+                      </span>
+                    )}
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </section>
+
+      {/* 3 — Ce qui est dépensé (ou dépensable) sans enveloppe. */}
+      {(real.unbudgeted.length > 0 || unbudgeted.length > 0) && (
+        <section className="card" aria-label="Hors enveloppe">
+          <span className="label" style={{ marginBottom: '0.2rem' }}>
+            Hors enveloppe
+          </span>
+          {real.unbudgeted.length > 0 && (
+            <p className="hint" style={{ marginTop: 0, marginBottom: '0.3rem' }}>
+              Dépensé ce mois sans enveloppe : ces montants réduisent ton disponible sans apparaître
+              dans les jauges.
+            </p>
+          )}
+          <ul className="rows">
             {real.unbudgeted.map((u) => (
-              <li key={u.category?.id ?? 'none'} className="list-item">
-                <span className="item-icon" aria-hidden="true">
+              <li key={u.category?.id ?? 'none'} className="row">
+                <span className="glyph glyph-sm" aria-hidden="true">
                   {u.category?.icon ?? '❓'}
                 </span>
-                <span className="item-body">
-                  <span className="item-title">{u.category?.name ?? 'Sans catégorie'}</span>
+                <span className="row-main">
+                  <span className="row-title">{u.category?.name ?? 'Sans catégorie'}</span>
                 </span>
-                <span className="amount">{formatEUR(u.amount)}</span>
+                <span className="amount" style={{ color: 'var(--critical)' }}>
+                  {formatEUR(u.amount)}
+                </span>
                 {u.category && (
                   <button
                     type="button"
-                    className="btn"
-                    style={{ minHeight: 36, padding: '0.25rem 0.6rem', fontSize: '0.82rem' }}
+                    className="btn btn-sm"
                     onClick={() => openEditor(u.category!, null)}
                   >
                     Budgéter
@@ -230,115 +296,63 @@ export function BudgetsPage() {
               </li>
             ))}
           </ul>
+
+          {unbudgeted.length > 0 && (
+            <details style={{ marginTop: real.unbudgeted.length > 0 ? '0.7rem' : 0 }}>
+              <summary className="more-summary">
+                {unbudgeted.length} catégorie{unbudgeted.length > 1 ? 's' : ''} sans enveloppe
+              </summary>
+              <ul className="rows">
+                {unbudgeted.map((c) => (
+                  <li key={c.id} className="row">
+                    <span className="glyph glyph-sm" aria-hidden="true">
+                      {c.icon}
+                    </span>
+                    <span className="row-main">
+                      <span className="row-title">{c.name}</span>
+                    </span>
+                    <button
+                      type="button"
+                      className="btn btn-sm"
+                      onClick={() => openEditor(c, null)}
+                    >
+                      Budgéter
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
         </section>
       )}
 
-      {statuses.length > 1 && (
-        <div className="field" style={{ margin: 0 }}>
-          <label htmlFor="budget-sort">Trier par</label>
-          <select
-            id="budget-sort"
-            value={sortKey}
-            onChange={(e) => setSortKey(e.target.value as SortKey)}
-          >
-            {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
-              <option key={k} value={k}>
-                {SORT_LABELS[k]}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {statuses.length === 0 && (
-        <div className="empty-state">
-          <p>Aucun budget défini pour l’instant.</p>
-          <p>Choisis une catégorie ci-dessous pour fixer une limite mensuelle.</p>
-        </div>
-      )}
-
-      {statuses.map((s) => {
-        const pct = Math.round(s.ratio * 100)
-        const gaugeClass =
-          s.level === 'over' ? 'gauge gauge-over' : s.level === 'warning' ? 'gauge gauge-warning' : 'gauge'
-        return (
-          <div key={s.budget.id} className="card">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <span className="item-icon" aria-hidden="true">
-                {s.category.icon}
-              </span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <span className="item-title">{s.category.name}</span>
-                <div className="item-sub">
-                  {formatEUR(s.spent)} sur {formatEURCompact(s.budget.monthlyAmount)} ({pct} %)
-                  {s.subscriptionSpent > 0 && (
-                    <>
-                      <br />
-                      dont {formatEUR(s.subscriptionSpent)} d’abonnements
-                    </>
-                  )}
-                </div>
-              </div>
+      <Modal open={sortOpen} onClose={() => setSortOpen(false)} title="Trier les enveloppes">
+        <ul className="rows">
+          {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
+            <li key={k} className="row" style={{ minHeight: 48, padding: 0 }}>
               <button
                 type="button"
-                className="icon-btn"
-                aria-label={`Modifier le budget ${s.category.name}`}
-                onClick={() => openEditor(s.category, s.budget.monthlyAmount)}
+                className="row-btn"
+                aria-pressed={sortKey === k}
+                onClick={() => {
+                  setSortKey(k)
+                  setSortOpen(false)
+                }}
               >
-                ✏️
+                <span className="row-main">
+                  <span className="row-title">{SORT_LABELS[k]}</span>
+                </span>
+                {sortKey === k && <IconCheck className="chev" />}
               </button>
-            </div>
-            <div
-              className={gaugeClass}
-              role="progressbar"
-              aria-valuenow={Math.min(pct, 100)}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label={`Budget ${s.category.name} consommé à ${pct} %`}
-              style={{ marginTop: '0.6rem' }}
-            >
-              <span style={{ width: `${Math.min(100, pct)}%` }} />
-            </div>
-            {s.level === 'over' && (
-              <p className="notice notice-critical" style={{ marginTop: '0.6rem', marginBottom: 0 }}>
-                <span aria-hidden="true">⛔</span> Dépassé de {formatEUR(s.spent - s.budget.monthlyAmount)}.
-              </p>
-            )}
-            {s.level !== 'over' && s.projectedOverDate && (
-              <p className="notice notice-warning" style={{ marginTop: '0.6rem', marginBottom: 0 }}>
-                <span aria-hidden="true">⚠️</span> À ce rythme, dépassement estimé le{' '}
-                {dayLabel.format(new Date(s.projectedOverDate))}.
-              </p>
-            )}
-          </div>
-        )
-      })}
-
-      {unbudgeted.length > 0 && (
-        <section className="card">
-          <h2>Catégories sans budget</h2>
-          <ul className="list">
-            {unbudgeted.map((c) => (
-              <li key={c.id} className="list-item">
-                <span className="item-icon" aria-hidden="true">
-                  {c.icon}
-                </span>
-                <span className="item-body">
-                  <span className="item-title">{c.name}</span>
-                </span>
-                <button type="button" className="btn" onClick={() => openEditor(c, null)}>
-                  Fixer un budget
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+            </li>
+          ))}
+        </ul>
+      </Modal>
 
       <Modal
         open={editingCategory !== null}
         onClose={() => setEditingCategory(null)}
-        title={editingCategory ? `Budget « ${editingCategory.name} »` : ''}
+        title={editingCategory ? `Enveloppe « ${editingCategory.name} »` : ''}
       >
         <form
           onSubmit={(e) => {
@@ -374,6 +388,6 @@ export function BudgetsPage() {
           </div>
         </form>
       </Modal>
-    </div>
+    </>
   )
 }

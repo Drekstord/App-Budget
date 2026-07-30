@@ -44,6 +44,26 @@ Les exigences complètes sont dans [EXIGENCES.md](EXIGENCES.md).
 - 💾 Export / import de sauvegarde JSON
 - 🌗 Thème clair / sombre, interface conforme RGAA, mois budgétaire personnalisable
 
+## Interface
+
+Direction visuelle **sobre et bancaire** : neutres légèrement bleutés, un seul
+accent, couleurs de statut réservées au statut, montants en chiffres tabulaires.
+
+- **4 onglets** (Accueil, Opérations, Budgets, Plus) + un **bouton d'ajout
+  central** disponible depuis n'importe quel écran ; sur PC, la barre devient
+  une navigation latérale
+- **Accueil** : un seul chiffre en gros (le disponible réel), une barre de
+  répartition dépensé / réservé / libre, quatre tuiles, puis les conseils
+- **Budgets** : un récapitulatif unique, toutes les enveloppes dans une seule
+  carte (une ligne + une jauge fine chacune, pourcentage affiché seulement s'il
+  mérite l'attention) et une section « hors enveloppe »
+- **Saisie** : feuille remontant du bas, montant en grand, **pavé numérique**
+  sur mobile (champ de saisie réel conservé pour le clavier et les lecteurs
+  d'écran), type segmenté, catégories en pastilles défilantes, scan de ticket
+  accessible depuis l'en-tête
+- Icônes d'interface en **SVG** (rendu identique partout) ; les emoji restent
+  réservés aux catégories et comptes, choisis par l'utilisateur
+
 ## Démarrer
 
 ```bash

@@ -4,6 +4,7 @@ import { useStore } from '../store/useStore.ts'
 import { alive, type Category, type CategoryKind } from '../domain/types.ts'
 import { CATEGORICAL } from '../theme.ts'
 import { Modal } from '../components/Modal.tsx'
+import { IconEdit, IconPlus } from '../components/icons.tsx'
 
 export function CategoriesPage() {
   const data = useStore((s) => s.data)
@@ -70,51 +71,52 @@ export function CategoriesPage() {
 
   const renderGroup = (title: string, k: CategoryKind) => (
     <section className="card">
-      <h2>{title}</h2>
-      <ul className="list">
-        {roots(k).map((c) => (
-          <li key={c.id} style={{ borderBottom: '1px solid var(--grid)' }}>
-            {[c, ...childrenOf(c.id)].map((cat, i) => (
-              <div key={cat.id} className="list-item" style={i > 0 ? { paddingLeft: '2.5rem', borderBottom: 'none' } : { borderBottom: 'none' }}>
-                <span className="item-icon" aria-hidden="true">
+      <span className="label" style={{ marginBottom: '0.2rem' }}>
+        {title}
+      </span>
+      <ul className="rows">
+        {roots(k).flatMap((c) =>
+          [c, ...childrenOf(c.id)].map((cat, i) => (
+            <li key={cat.id} className="row" style={{ padding: 0 }}>
+              <button
+                type="button"
+                className="row-btn"
+                aria-label={`Modifier la catégorie ${cat.name}`}
+                onClick={() => openForm(cat)}
+                style={i > 0 ? { paddingLeft: '1.9rem' } : undefined}
+              >
+                <span className="glyph glyph-sm" aria-hidden="true">
                   {cat.icon}
                 </span>
-                <span className="item-body">
-                  <span className="item-title">{cat.name}</span>
+                <span className="row-main">
+                  <span className="row-title">{cat.name}</span>
                 </span>
                 <span
-                  className="swatch"
-                  style={{
-                    width: 14,
-                    height: 14,
-                    borderRadius: 4,
-                    background: CATEGORICAL.light[(cat.colorSlot - 1) % 8],
-                  }}
+                  className="dot"
+                  style={{ background: CATEGORICAL.light[(cat.colorSlot - 1) % 8] }}
                   aria-hidden="true"
                 />
-                <button
-                  type="button"
-                  className="icon-btn"
-                  aria-label={`Modifier la catégorie ${cat.name}`}
-                  onClick={() => openForm(cat)}
-                >
-                  ✏️
-                </button>
-              </div>
-            ))}
-          </li>
-        ))}
+                <IconEdit className="chev" size={16} />
+              </button>
+            </li>
+          )),
+        )}
       </ul>
-      <button type="button" className="btn" onClick={() => openForm(null, k)}>
-        + Ajouter
+      <button
+        type="button"
+        className="btn btn-sm"
+        style={{ marginTop: '0.6rem' }}
+        onClick={() => openForm(null, k)}
+      >
+        <IconPlus size={16} /> Ajouter
       </button>
     </section>
   )
 
   return (
-    <div className="stack">
-      <p>
-        <Link to="/reglages">← Retour aux réglages</Link>
+    <>
+      <p style={{ margin: 0 }}>
+        <Link to="/plus">← Retour</Link>
       </p>
       {renderGroup('Catégories de dépenses', 'expense')}
       {renderGroup('Catégories de revenus', 'income')}
@@ -243,13 +245,13 @@ export function CategoriesPage() {
             </div>
           )}
 
-          <div style={{ marginTop: '1rem' }}>
-            <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
+          <div className="sheet-actions">
+            <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
               Enregistrer
             </button>
           </div>
         </form>
       </Modal>
-    </div>
+    </>
   )
 }

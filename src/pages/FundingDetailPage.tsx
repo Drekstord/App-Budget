@@ -5,8 +5,14 @@ import { formatEUR } from '../domain/money.ts'
 import { todayISO } from '../domain/periods.ts'
 import { computeFundingPlans, type Feasibility } from '../domain/funding.ts'
 import { FundingChart } from '../components/charts.tsx'
+import { IconAlert, IconCheckCircle, IconInfo } from '../components/icons.tsx'
 
-const SEVERITY_ICONS = { critical: '⛔', warning: '⚠️', info: '💡', good: '✅' } as const
+const SEVERITY_ICON = {
+  critical: IconAlert,
+  warning: IconAlert,
+  info: IconInfo,
+  good: IconCheckCircle,
+} as const
 
 const FEASIBILITY_LABEL: Record<Feasibility, string> = {
   covered_now: 'Finançable maintenant',
@@ -46,60 +52,84 @@ export function FundingDetailPage() {
     navigate('/plans')
   }
 
+  const feasibilityTone =
+    result.feasibility === 'infeasible'
+      ? 'critical'
+      : result.feasibility === 'feasible_variable'
+        ? 'warning'
+        : 'good'
+
   return (
-    <div className="stack">
+    <>
       <div>
         <button type="button" className="btn btn-ghost" onClick={() => navigate('/plans')}>
-          ← Tous les plans
+          ← Tous les projets
         </button>
       </div>
 
-      <section className="card">
-        <h2 style={{ marginBottom: '0.25rem' }}>{plan.targetLabel}</h2>
-        <p className="chart-note" style={{ marginTop: 0 }}>
-          {formatEUR(plan.targetAmount)} · prévu le {longDate.format(new Date(plan.targetDate + 'T00:00:00'))}
-          {result.monthsRemaining > 0 && ` · dans ${result.monthsRemaining} mois`}
-        </p>
-        <p
-          className={`notice notice-${result.feasibility === 'infeasible' ? 'critical' : result.feasibility === 'feasible_variable' ? 'warning' : 'good'}`}
-          style={{ margin: 0, fontWeight: 600 }}
+      <section className="card" aria-label="Objectif du projet">
+        <div className="plan-head">
+          <span className="row-main">
+            <span className="row-title plan-title">{plan.targetLabel}</span>
+            <span className="row-meta">
+              prévu le {longDate.format(new Date(plan.targetDate + 'T00:00:00'))}
+              {result.monthsRemaining > 0 && ` · dans ${result.monthsRemaining} mois`}
+            </span>
+          </span>
+          <span className={`pill pill-${feasibilityTone === 'critical' ? 'over' : feasibilityTone} plan-badge`}>
+            {FEASIBILITY_LABEL[result.feasibility]}
+          </span>
+        </div>
+        <p className="hero hero-sm">{formatEUR(plan.targetAmount)}</p>
+        <div
+          className={`meter ${result.feasibility === 'infeasible' ? 'meter-over' : ''}`}
+          role="img"
+          aria-label={`${formatEUR(result.drawableNow)} mobilisables sur ${formatEUR(plan.targetAmount)}`}
         >
-          {FEASIBILITY_LABEL[result.feasibility]}
-        </p>
+          <span
+            style={{
+              width: `${
+                plan.targetAmount > 0
+                  ? Math.max(0, Math.min(100, (result.drawableNow / plan.targetAmount) * 100))
+                  : 0
+              }%`,
+            }}
+          />
+        </div>
       </section>
 
-      <div className="grid-2 grid-4">
-        <div className="kpi">
-          <div className="kpi-label">Mobilisable maintenant</div>
-          <div className="kpi-value">{formatEUR(result.drawableNow)}</div>
-          <div className="kpi-sub">selon tes priorités</div>
+      <div className="tiles">
+        <div className="tile">
+          <span className="label">Mobilisable</span>
+          <div className="tile-v">{formatEUR(result.drawableNow)}</div>
+          <div className="tile-d">selon tes priorités</div>
         </div>
-        <div className="kpi">
-          <div className="kpi-label">Reste à réunir</div>
-          <div className="kpi-value">{formatEUR(result.shortfallNow)}</div>
-          <div className="kpi-sub">au-delà du mobilisable</div>
+        <div className="tile">
+          <span className="label">Reste à réunir</span>
+          <div className="tile-v">{formatEUR(result.shortfallNow)}</div>
+          <div className="tile-d">au-delà du mobilisable</div>
         </div>
-        <div className="kpi">
-          <div className="kpi-label">À épargner par mois</div>
-          <div className="kpi-value">
+        <div className="tile">
+          <span className="label">À épargner / mois</span>
+          <div className="tile-v">
             {result.monthsRemaining > 0 ? formatEUR(result.requiredMonthlySaving) : '—'}
           </div>
-          <div className="kpi-sub">
+          <div className="tile-d">
             {result.averageMonthlyNet > 0
               ? `marge ~${formatEUR(result.averageMonthlyNet)}/mois`
               : 'd’ici l’échéance'}
           </div>
         </div>
-        <div className="kpi">
-          <div className="kpi-label">Projeté à l’échéance</div>
-          <div className="kpi-value">{formatEUR(result.projectedAtTarget)}</div>
-          <div className="kpi-sub">revenus fixes seuls</div>
+        <div className="tile">
+          <span className="label">Projeté</span>
+          <div className="tile-v">{formatEUR(result.projectedAtTarget)}</div>
+          <div className="tile-d">revenus fixes seuls</div>
         </div>
       </div>
 
       {result.reservedByOtherPlans > 0 && (
         <p className="notice notice-info" style={{ margin: 0 }}>
-          <span aria-hidden="true">🔗</span>
+          <IconInfo />
           <span>
             {formatEUR(result.reservedByOtherPlans)} de ta trésorerie sont déjà réservés par un
             projet à l’échéance plus proche
@@ -111,17 +141,22 @@ export function FundingDetailPage() {
 
       {result.warnings.length > 0 && (
         <section aria-label="Analyse du plan" className="stack" style={{ gap: '0.5rem' }}>
-          {result.warnings.map((w) => (
-            <p key={w.id} className={`notice notice-${w.severity}`} style={{ margin: 0 }}>
-              <span aria-hidden="true">{SEVERITY_ICONS[w.severity]}</span>
-              <span>{w.text}</span>
-            </p>
-          ))}
+          {result.warnings.map((w) => {
+            const Icon = SEVERITY_ICON[w.severity]
+            return (
+              <p key={w.id} className={`notice notice-${w.severity}`} style={{ margin: 0 }}>
+                <Icon />
+                <span>{w.text}</span>
+              </p>
+            )
+          })}
         </section>
       )}
 
       <section className="card">
-        <h2>Marche à suivre</h2>
+        <span className="label" style={{ marginBottom: '0.5rem' }}>
+          Marche à suivre
+        </span>
         <ol className="steps">
           {result.coveredNow > 0 && (
             <li>
@@ -159,7 +194,7 @@ export function FundingDetailPage() {
         </ol>
       </section>
 
-      <section className="card chart-block">
+      <section className="card">
         <h2>Trajectoire jusqu’à l’échéance</h2>
         <p className="chart-note">
           Évolution de ce que tu peux mobiliser, mois par mois, comparée à l’objectif.
@@ -168,27 +203,28 @@ export function FundingDetailPage() {
       </section>
 
       <section className="card">
-        <h2>Comment financer dès maintenant</h2>
+        <span className="label" style={{ marginBottom: '0.3rem' }}>
+          Comment financer dès maintenant
+        </span>
         {allocated.length === 0 ? (
-          <p className="chart-note" style={{ margin: 0 }}>
+          <p className="hint" style={{ marginTop: 0 }}>
             Aucun compte n’est mobilisable pour l’instant (soldes insuffisants ou protégés). Le plan
             repose sur l’épargne à constituer d’ici l’échéance.
           </p>
         ) : (
           <>
-            <p className="chart-note">
+            <p className="hint" style={{ marginTop: 0, marginBottom: '0.3rem' }}>
               Répartition suggérée, en respectant l’ordre de priorité et tes protections :
             </p>
-            <ul className="list">
+            <ul className="rows">
               {allocated.map((d) => (
-                <li key={d.accountId} className="list-item">
-                  <span className="item-icon" aria-hidden="true">
+                <li key={d.accountId} className="row">
+                  <span className="glyph glyph-sm" aria-hidden="true">
                     {d.icon}
                   </span>
-                  <span className="item-body">
-                    <span className="item-title">{d.name}</span>
-                    <br />
-                    <span className="item-sub">
+                  <span className="row-main">
+                    <span className="row-title">{d.name}</span>
+                    <span className="row-meta">
                       solde {formatEUR(d.balance)}
                       {d.reservedByOthers > 0 && ` · ${formatEUR(d.reservedByOthers)} réservés ailleurs`}
                       {d.keepMin > 0 && ` · préserver ${formatEUR(d.keepMin)}`}
@@ -202,7 +238,7 @@ export function FundingDetailPage() {
           </>
         )}
         {result.draws.some((d) => d.excluded || (d.keepMin > 0 && d.allocated < d.balance)) && (
-          <p className="chart-note" style={{ marginBottom: 0 }}>
+          <p className="hint">
             Comptes protégés :{' '}
             {result.draws
               .filter((d) => d.excluded)
@@ -217,7 +253,7 @@ export function FundingDetailPage() {
         )}
       </section>
 
-      <div style={{ display: 'flex', gap: '0.5rem' }}>
+      <div className="sheet-actions">
         <button type="button" className="btn btn-danger" onClick={() => void remove()}>
           Supprimer
         </button>
@@ -227,9 +263,9 @@ export function FundingDetailPage() {
           style={{ flex: 1 }}
           onClick={() => navigate(`/plans/${plan.id}/modifier`)}
         >
-          Modifier le plan
+          Modifier le projet
         </button>
       </div>
-    </div>
+    </>
   )
 }
