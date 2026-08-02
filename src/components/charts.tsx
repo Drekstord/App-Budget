@@ -138,7 +138,7 @@ export function MonthlyBars({ series, mode }: { series: PeriodSeriesPoint[]; mod
   const expenseColor = slotColor(1, mode)
   const incomeColor = slotColor(2, mode)
   const data = series.map((p) => ({
-    label: p.period.label.split(' ')[0],
+    label: p.period.shortLabel,
     fullLabel: p.period.label,
     Dépenses: p.expense / 100,
     Revenus: p.income / 100,

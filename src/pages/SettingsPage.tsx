@@ -2,9 +2,14 @@ import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '../store/useStore.ts'
 import type { ThemePreference } from '../domain/types.ts'
-import { centsToInput, parseAmountToCents } from '../domain/money.ts'
+import { centsToInput, formatEUR, parseAmountToCents } from '../domain/money.ts'
+import { periodForDate, todayISO } from '../domain/periods.ts'
+import { suggestPayday } from '../domain/payday.ts'
 import { backupFileName, BackupError, createBackup, parseBackup } from '../domain/backup.ts'
 import { Modal } from '../components/Modal.tsx'
+import { IconCheckCircle, IconInfo } from '../components/icons.tsx'
+
+const longDate = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long' })
 
 export function SettingsPage() {
   const data = useStore((s) => s.data)
@@ -22,6 +27,8 @@ export function SettingsPage() {
 
   if (!data) return null
   const { settings } = data
+  const currentPeriod = periodForDate(todayISO(), settings.monthStartDay)
+  const payday = suggestPayday(data)
 
   const exportBackup = () => {
     const backup = createBackup(data)
@@ -93,21 +100,82 @@ export function SettingsPage() {
       </section>
 
       <section className="card">
-        <h2>Budget</h2>
+        <h2>Mon mois budgétaire</h2>
         <div className="field">
-          <label htmlFor="set-start-day">Jour de début du mois budgétaire</label>
+          <label htmlFor="set-start-day">Mon mois commence le</label>
           <select
             id="set-start-day"
             value={settings.monthStartDay}
             onChange={(e) => void updateSettings({ monthStartDay: Number(e.target.value) })}
           >
-            {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+            {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
               <option key={d} value={d}>
-                {d === 1 ? 'Le 1er (mois civil)' : `Le ${d}`}
+                {d === 1
+                  ? '1er du mois (mois civil)'
+                  : d === 31
+                    ? 'Dernier jour du mois'
+                    : `${d} du mois`}
               </option>
             ))}
           </select>
+          <p className="hint">
+            Choisis le jour où tu touches ton salaire : budgets, disponible, alertes et graphiques
+            se recalent sur cette période.
+            {settings.monthStartDay >= 29 && settings.monthStartDay < 31 && (
+              <>
+                {' '}
+                Les mois plus courts (février) démarreront au dernier jour disponible.
+              </>
+            )}
+          </p>
+          <p className="notice notice-info" style={{ marginTop: '0.5rem' }}>
+            <IconInfo />
+            <span>
+              Période en cours : <strong>{currentPeriod.label}</strong> (
+              {longDate.format(new Date(currentPeriod.start + 'T00:00:00'))} au{' '}
+              {longDate.format(new Date(currentPeriod.end + 'T00:00:00'))})
+            </span>
+          </p>
         </div>
+
+        {/* Proposition déduite des revenus déjà saisis : plus fiable qu'un
+            réglage deviné, et vérifiable puisqu'on montre sur quoi elle s'appuie. */}
+        {payday && (
+          <div className="field">
+            {payday.day === settings.monthStartDay ? (
+              <p className="notice notice-good" style={{ margin: 0 }}>
+                <IconCheckCircle />
+                <span>
+                  Ça correspond à tes revenus : {payday.label} tombe{' '}
+                  {payday.endOfMonth ? 'en fin de mois' : `le ${payday.day}`} (
+                  {payday.monthsAnalysed} mois analysés).
+                </span>
+              </p>
+            ) : (
+              <>
+                <p className="notice notice-info" style={{ margin: '0 0 0.5rem' }}>
+                  <IconInfo />
+                  <span>
+                    D’après tes opérations, {payday.label} arrive{' '}
+                    {payday.endOfMonth ? 'en fin de mois' : `le ${payday.day} du mois`} (
+                    {formatEUR(payday.averageAmount)} en moyenne, sur {payday.monthsAnalysed} mois).
+                  </span>
+                </p>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => void updateSettings({ monthStartDay: payday.day })}
+                >
+                  Caler mon mois sur ce revenu
+                </button>
+              </>
+            )}
+          </div>
+        )}
+      </section>
+
+      <section className="card">
+        <h2>Budget</h2>
         <div className="field">
           <label htmlFor="set-warn">Seuil d’alerte budget</label>
           <select
@@ -134,7 +202,7 @@ export function SettingsPage() {
               void updateSettings({ monthlyIncomeReference: cents && cents > 0 ? cents : 0 })
             }}
           />
-          <p className="chart-note" style={{ marginTop: '0.3rem' }}>
+          <p className="hint">
             Sert au calcul du « reste à attribuer » dans les budgets. Vide = calculé sur la
             moyenne de tes revenus réels.
           </p>

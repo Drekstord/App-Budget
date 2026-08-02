@@ -3,7 +3,7 @@ import { useStore } from '../store/useStore.ts'
 import { useResolvedTheme } from '../theme.ts'
 import { alive } from '../domain/types.ts'
 import { formatEUR, formatEURCompact } from '../domain/money.ts'
-import { periodForDate, todayISO } from '../domain/periods.ts'
+import { periodForDate, periodProgress, todayISO } from '../domain/periods.ts'
 import {
   accountBalance,
   budgetStatuses,
@@ -52,6 +52,12 @@ export function DashboardPage() {
   const pct = (v: number) => (base > 0 ? Math.max(0, Math.min(100, (v / base) * 100)) : 0)
   const overspent = real.reference > 0 && real.realRemaining < 0
 
+  // Jours restants avant la prochaine période (donc, si le mois est calé sur la
+  // paie, avant le prochain salaire) et budget quotidien correspondant.
+  const { totalDays, elapsedDays } = periodProgress(period, today)
+  const daysLeft = totalDays - elapsedDays
+  const perDay = daysLeft > 0 && real.realRemaining > 0 ? Math.floor(real.realRemaining / daysLeft) : 0
+
   return (
     <>
       {/* Le chiffre qui répond à « combien puis-je encore dépenser ? » */}
@@ -64,6 +70,10 @@ export function DashboardPage() {
           {real.reference > 0
             ? 'après dépenses et enveloppes réservées'
             : 'définis un revenu de référence dans les Réglages pour voir ton disponible'}
+          {/* Quand le mois est calé sur la paie, « combien de jours à tenir »
+              compte autant que « combien il reste ». */}
+          {daysLeft > 0 && ` · ${daysLeft} jour${daysLeft > 1 ? 's' : ''} à tenir`}
+          {daysLeft > 0 && perDay > 0 && `, soit ${formatEURCompact(perDay)}/jour`}
         </p>
 
         {base > 0 && (

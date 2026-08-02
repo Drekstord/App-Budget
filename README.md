@@ -41,8 +41,13 @@ Les exigences complètes sont dans [EXIGENCES.md](EXIGENCES.md).
 - 🧮 **Disponible réel du mois** : revenu − tout ce qui est déjà dépensé (y compris
   hors budget) − ce qui reste réservé dans les enveloppes, plus la liste des
   dépenses non budgétées — pour ne pas se croire plus riche qu'on ne l'est
+- 📅 **Mois budgétaire calé sur la paie** : le mois commence le jour où le
+  salaire tombe (n'importe quel jour, y compris « dernier jour du mois », qui
+  s'adapte à la longueur de chaque mois). L'app **détecte le jour de paie** à
+  partir des revenus déjà saisis et propose de s'y caler ; l'accueil indique
+  combien de jours restent à tenir et le budget quotidien correspondant
 - 💾 Export / import de sauvegarde JSON
-- 🌗 Thème clair / sombre, interface conforme RGAA, mois budgétaire personnalisable
+- 🌗 Thème clair / sombre, interface conforme RGAA
 
 ## Interface
 
