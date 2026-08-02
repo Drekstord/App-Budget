@@ -126,6 +126,40 @@ describe('periods', () => {
     expect(totalDays).toBe(31)
     expect(elapsedDays).toBe(15)
   })
+
+  it('nomme la période d’après le mois qu’elle couvre majoritairement', () => {
+    expect(periodForDate('2026-07-15', 1).shortLabel).toBe('juil.')
+    // Du 28 juin au 27 juillet : c’est bien « juillet », pas « juin ».
+    expect(periodForDate('2026-07-15', 28).shortLabel).toBe('juil.')
+  })
+
+  it('« dernier jour du mois » (31) s’adapte à la longueur du mois', () => {
+    // Février 2026 compte 28 jours : la période démarre le 28.
+    const feb = periodForDate('2026-03-10', 31)
+    expect(feb.start).toBe('2026-02-28')
+    expect(feb.end).toBe('2026-03-30')
+    // Mars en compte 31.
+    const mar = periodForDate('2026-04-10', 31)
+    expect(mar.start).toBe('2026-03-31')
+    expect(mar.end).toBe('2026-04-29')
+  })
+
+  it('ramène un jour de paie tardif au dernier jour des mois courts', () => {
+    const p = periodForDate('2026-02-28', 30)
+    expect(p.start).toBe('2026-02-28')
+    expect(p.end).toBe('2026-03-29')
+  })
+
+  it('ne laisse aucun trou entre deux périodes consécutives', () => {
+    for (const startDay of [1, 15, 28, 29, 30, 31]) {
+      const periods = lastPeriods(14, startDay, '2026-07-15')
+      for (let i = 1; i < periods.length; i++) {
+        const previousEnd = new Date(periods[i - 1].end + 'T00:00:00')
+        previousEnd.setDate(previousEnd.getDate() + 1)
+        expect(previousEnd.toISOString().slice(0, 10)).toBe(periods[i].start)
+      }
+    }
+  })
 })
 
 describe('stats', () => {
