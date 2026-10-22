@@ -1477,3 +1477,26 @@ ol.steps strong {
   color: var(--ink-3);
   flex: none;
 }
+
+/* Identité sur l'écran de verrouillage : l'icône de l'app et son nom. */
+.lock-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.lock-brand img {
+  border-radius: 18px;
+  box-shadow: var(--shadow-float);
+}
+
+.lock-brand span {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  /* Compense l'espacement après la dernière lettre pour un centrage optique. */
+  margin-right: -0.22em;
+}

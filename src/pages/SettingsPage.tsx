@@ -313,7 +313,7 @@ export function SettingsPage() {
       </section>
 
       <p className="chart-note" style={{ textAlign: 'center' }}>
-        App Budget v1 — hors ligne, chiffrée, sans compte.
+        Écu v1 — hors ligne, chiffrée, sans compte.
       </p>
 
       <Modal open={pinModalOpen} onClose={() => setPinModalOpen(false)} title="Changer le code PIN">

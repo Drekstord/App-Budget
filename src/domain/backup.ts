@@ -23,7 +23,7 @@ export function createBackup(data: AppData): BackupFile {
 }
 
 export function backupFileName(date = new Date()): string {
-  return `app-budget-sauvegarde-${date.toISOString().slice(0, 10)}.json`
+  return `ecu-sauvegarde-${date.toISOString().slice(0, 10)}.json`
 }
 
 export class BackupError extends Error {}
@@ -37,7 +37,7 @@ export function parseBackup(json: string): AppData {
   }
   const file = parsed as Partial<BackupFile>
   if (file.format !== BACKUP_FORMAT) {
-    throw new BackupError('Ce fichier n’est pas une sauvegarde App Budget.')
+    throw new BackupError('Ce fichier n’est pas une sauvegarde Écu.')
   }
   if (typeof file.version !== 'number' || file.version > BACKUP_VERSION) {
     throw new BackupError(

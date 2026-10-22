@@ -32,7 +32,7 @@ function titleFor(pathname: string): string {
   if (pathname === '/plans/nouveau') return 'Nouveau projet'
   if (pathname.startsWith('/plans/') && pathname.endsWith('/modifier')) return 'Modifier le projet'
   if (pathname.startsWith('/plans/')) return 'Projet'
-  return TITLES[pathname] ?? 'App Budget'
+  return TITLES[pathname] ?? 'Écu'
 }
 
 export function Layout() {
