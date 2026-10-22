@@ -1,4 +1,8 @@
-# App Budget
+# Écu
+
+> **Écu** — un écu est à la fois un bouclier et une ancienne monnaie
+> européenne. Ton argent, protégé : PIN, chiffrement, et des données qui ne
+> quittent jamais l’appareil.
 
 Application de gestion de budget personnel : **PWA** installable sur Android et
 utilisable dans n'importe quel navigateur sur PC. 100 % hors ligne, données

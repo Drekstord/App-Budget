@@ -1,4 +1,4 @@
-# App-Budget — Document d'exigences
+# Écu — Document d’exigences
 
 > **Version 1.0 — 3 juillet 2026** — Document soumis à validation avant tout développement.
 

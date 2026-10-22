@@ -104,13 +104,14 @@ export function LockPage({ mode }: { mode: 'setup' | 'locked' }) {
 
   return (
     <div className="lock-screen">
-      <div style={{ fontSize: '3rem' }} aria-hidden="true">
-        🔐
+      <div className="lock-brand">
+        <img src="./icons/icon.svg" alt="" width={72} height={72} />
+        <span>Écu</span>
       </div>
       <div>
         <h1>{title}</h1>
         {isSetup && !isConfirm && (
-          <p style={{ color: 'var(--text-2)', maxWidth: 320 }}>
+          <p style={{ color: 'var(--ink-2)', maxWidth: 320 }}>
             De {MIN_PIN} à {MAX_PIN} chiffres. Il chiffre toutes tes données : sans lui, elles sont
             irrécupérables.
           </p>

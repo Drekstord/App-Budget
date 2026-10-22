@@ -1,10 +1,16 @@
-# 📱 Tuto : installer et utiliser App Budget sur ton téléphone
+# 📱 Tuto : installer et utiliser Écu sur ton téléphone
+
+> ⚠️ **Adresse web suspendue.** Le dépôt est passé en privé en vue de la
+> refonte : l’adresse `drekstord.github.io/App-Budget/` ne répond plus. Si
+> l’app est déjà installée sur ton téléphone, elle continue de fonctionner
+> hors ligne avec toutes tes données. Ce tuto sera mis à jour avec la
+> nouvelle version.
 
 Ce guide part de zéro : aucune connaissance nécessaire. Compte environ
 10 minutes pour la mise en place (à faire une seule fois), puis
 l'application vit sur ton téléphone comme n'importe quelle app.
 
-**Le principe en une phrase :** App Budget est une *PWA* (application web
+**Le principe en une phrase :** Écu est une *PWA* (application web
 installable). On la met en ligne une fois sur une adresse HTTPS gratuite,
 tu l'ouvres sur ton téléphone, tu l'« installes » depuis le navigateur, et
 ensuite elle fonctionne entièrement hors ligne — tes données restent sur le
@@ -67,7 +73,7 @@ Sur ton Samsung (S26 Ultra), avec **Chrome** (recommandé) :
 3. Touche **« Ajouter à l'écran d'accueil »** (ou « Installer
    l'application » si Chrome le propose directement).
 4. Confirme avec **« Installer »**.
-5. Une icône **App Budget** (bleue, avec un €) apparaît sur ton écran
+5. Une icône **Écu** (un bouclier blanc sur fond bleu, avec une pièce €) apparaît sur ton écran
    d'accueil, à côté de tes autres applications.
 
 Avec **Samsung Internet** ça marche aussi : menu **≡** → **« Ajouter la
@@ -136,7 +142,7 @@ Tes données n'existent **que** sur ton téléphone. Une sauvegarde te protège
 contre la perte/casse du téléphone et l'oubli du PIN.
 
 - **Exporter** : Réglages → Sauvegarde → **« Exporter (JSON) »**. Un
-  fichier `app-budget-sauvegarde-AAAA-MM-JJ.json` se télécharge. Range-le
+  fichier `ecu-sauvegarde-AAAA-MM-JJ.json` se télécharge. Range-le
   en lieu sûr (Drive, mail à toi-même, PC…).
 - **Restaurer** (nouveau téléphone, ou sur PC) : Réglages → Sauvegarde →
   **« Importer une sauvegarde… »** → choisis le fichier. ⚠️ L'import

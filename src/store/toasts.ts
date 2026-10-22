@@ -41,9 +41,9 @@ export async function notifySystem(alerts: TransactionAlert[], enabled: boolean)
     for (const a of alerts) {
       if (a.severity === 'info') continue
       if (registration) {
-        await registration.showNotification('App Budget', { body: a.text, tag: a.id })
+        await registration.showNotification('Écu', { body: a.text, tag: a.id })
       } else {
-        new Notification('App Budget', { body: a.text, tag: a.id })
+        new Notification('Écu', { body: a.text, tag: a.id })
       }
     }
   } catch {
