@@ -6,25 +6,24 @@
 
 ## 1. Récupérer l'APK (depuis le téléphone)
 
-1. Dans Chrome, connecte-toi à GitHub et ouvre le dépôt **App-Budget** →
-   onglet **Actions** → workflow **Android**.
-2. Ouvre l'exécution la plus récente marquée ✅ sur la branche de travail.
-3. En bas, section **Artifacts** : touche **boussole-test-apk** pour
-   télécharger le fichier `.zip`.
-4. Ouvre-le avec **Mes fichiers** (Samsung) → **Extraire**. Tu obtiens
-   `boussole-test-xxxxxxxx.apk`.
+Ouvre ce lien dans Chrome, connecté à ton compte GitHub (le dépôt est privé) :
 
-*Facultatif, pour vérifier l'APK* : la page de l'exécution (résumé) affiche
-l'empreinte SHA-256 de l'APK et celle du certificat.
+> **https://github.com/Drekstord/App-Budget/releases/download/test/boussole-test.apk**
+
+L'APK se télécharge directement. **Garde ce lien en favori** : il pointe
+toujours vers la dernière version de test. La page
+https://github.com/Drekstord/App-Budget/releases/tag/test indique à quel
+commit elle correspond et donne son empreinte SHA-256.
 
 ## 2. Installer
 
 1. Si une version précédente est installée : appui long sur son icône →
    **Désinstaller**.
-2. Touche l'APK dans Mes fichiers. Android demande d'autoriser **Mes fichiers**
-   à installer des applications inconnues : autorise-le **pour cette fois**,
-   puis retire l'autorisation après l'installation (Paramètres → Applications
-   → Mes fichiers → Installer applis inconnues).
+2. Ouvre le fichier téléchargé (notification de Chrome, ou Mes fichiers → Téléchargements). Android demande d'autoriser l'app qui
+   ouvre le fichier (**Chrome** ou **Mes fichiers**) à installer des
+   applications inconnues : autorise-la, puis retire l'autorisation après
+   l'installation (Paramètres → Applications → Chrome → Installer applis
+   inconnues).
 3. Play Protect peut avertir d'une app inconnue : c'est normal pour une app
    que tu installes toi-même. Choisis « Installer quand même ».
 

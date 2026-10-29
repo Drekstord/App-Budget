@@ -62,3 +62,44 @@ jobs:
           path: dist/*.apk
           retention-days: 14
           if-no-files-found: error
+
+  # Publication séparée du build : seul ce job, qui n'exécute aucun code du
+  # projet ni de ses dépendances, reçoit le droit d'écrire (créer la Release).
+  publish:
+    name: Publier l'APK de test (lien fixe)
+    needs: build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    concurrency:
+      group: publish-test-apk
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: boussole-test-apk
+          path: dist
+
+      - name: Remplacer la Release « test »
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mv dist/*.apk boussole-test.apk
+          SHA256=$(sha256sum boussole-test.apk | cut -d' ' -f1)
+          cat > notes.md <<NOTES
+          ⚠️ **Version de test** — données fictives uniquement (clé de signature temporaire).
+          Désinstalle la version précédente avant d'installer celle-ci.
+
+          - Branche : \`${GITHUB_REF_NAME}\`
+          - Commit : \`${GITHUB_SHA::8}\`
+          - SHA-256 de l'APK : \`${SHA256}\`
+          NOTES
+          gh release delete test --yes --cleanup-tag || true
+          gh release create test boussole-test.apk \
+            --target "$GITHUB_SHA" \
+            --prerelease \
+            --title "Boussole — version de test (${GITHUB_SHA::8})" \
+            --notes-file notes.md
