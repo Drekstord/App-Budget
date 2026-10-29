@@ -1,5 +1,14 @@
-node_modules/
-dist/
-dev-dist/
-*.tsbuildinfo
-.DS_Store
+# Gradle / Android
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.kotlin/
+captures/
+
+# Jamais de clé de signature ni d'APK dans le dépôt
+*.jks
+*.keystore
+*.apk
+*.aab

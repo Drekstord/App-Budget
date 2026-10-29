@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Garantie n° 1 (docs/SECURITE.md) : aucun accès réseau, même si une
+         dépendance le demande. La CI vérifie l'APK final. -->
+    <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
+
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+
+    <application
+        android:name=".BoussoleApp"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:hasFragileUserData="false"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:usesCleartextTraffic="false"
+        android:theme="@style/Theme.Boussole"
+        tools:targetApi="36">
+
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Partage des sauvegardes (déjà chiffrées) vers Proton Drive. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.backups"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/backup_paths" />
+        </provider>
+
+        <!-- Surface d'attaque minimale : récepteur exporté inutile pour nous. -->
+        <receiver
+            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+            tools:node="remove" />
+    </application>
+</manifest>

@@ -1,0 +1,38 @@
+# Versions figées : toute mise à jour passe par une revue (cf. docs/SECURITE.md).
+[versions]
+agp = "8.13.0"
+kotlin = "2.2.20"
+kotlinx-serialization = "1.9.0"
+kotlinx-coroutines = "1.10.2"
+bouncycastle = "1.86"
+junit-jupiter = "5.13.4"
+compose-bom = "2025.09.00"
+activity-compose = "1.10.1"
+core-ktx = "1.16.0"
+lifecycle = "2.9.1"
+biometric = "1.1.0"
+fragment = "1.8.5"
+
+[libraries]
+bouncycastle = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose-bom" }
+compose-ui = { module = "androidx.compose.ui:ui" }
+compose-material3 = { module = "androidx.compose.material3:material3" }
+compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
+activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity-compose" }
+core-ktx = { module = "androidx.core:core-ktx", version.ref = "core-ktx" }
+lifecycle-process = { module = "androidx.lifecycle:lifecycle-process", version.ref = "lifecycle" }
+lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
+biometric = { module = "androidx.biometric:biometric", version.ref = "biometric" }
+fragment = { module = "androidx.fragment:fragment-ktx", version.ref = "fragment" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

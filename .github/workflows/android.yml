@@ -1,0 +1,64 @@
+name: Android
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+  workflow_dispatch:
+
+# Moindre privilège : la CI ne fait que lire le dépôt.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Tests, APK et contrôles de sécurité
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # Actions épinglées par empreinte de commit (un tag peut être déplacé).
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Vérifier l'intégrité du wrapper Gradle
+        uses: gradle/actions/wrapper-validation@ac638b010cf58a27ee6c972d7336334ccaf61c96 # v4.4.1
+
+      - uses: gradle/actions/setup-gradle@ac638b010cf58a27ee6c972d7336334ccaf61c96 # v4.4.1
+
+      - name: Tests du cœur (crypto, coffre, sauvegarde)
+        run: ./gradlew -p core test --console=plain
+
+      - name: Construire l'APK
+        run: ./gradlew -p android :app:assembleRelease --console=plain
+
+      - name: Garantie n° 1 — aucune permission réseau dans l'APK
+        run: |
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          AAPT2=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
+          "$AAPT2" dump permissions "$APK" | tee permissions.txt
+          if grep -E "android\.permission\.(INTERNET|ACCESS_NETWORK_STATE|ACCESS_WIFI_STATE|CHANGE_NETWORK_STATE)" permissions.txt; then
+            echo "::error::Une permission réseau est présente dans l'APK."
+            exit 1
+          fi
+
+      - name: Empreintes de l'APK et du certificat
+        run: |
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          "$APKSIGNER" verify --verbose --print-certs "$APK" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "SHA-256 de l'APK : $(sha256sum "$APK" | cut -d' ' -f1)" | tee -a "$GITHUB_STEP_SUMMARY"
+          mkdir -p dist
+          cp "$APK" "dist/boussole-test-${GITHUB_SHA::8}.apk"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: boussole-test-apk
+          path: dist/*.apk
+          retention-days: 14
+          if-no-files-found: error
