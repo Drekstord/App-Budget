@@ -55,7 +55,8 @@ fun HomeScreen(state: VaultState.Unlocked, vault: VaultService, activity: Fragme
             "Chiffré, sans accès Internet. Clé protégée par : " + when (state.keyLevel) {
                 HardwareKey.Level.STRONGBOX -> "la puce StrongBox."
                 HardwareKey.Level.TEE -> "l'environnement sécurisé (TEE)."
-                HardwareKey.Level.OTHER -> "niveau inconnu."
+                HardwareKey.Level.SOFTWARE -> "logiciel uniquement (aucune puce sécurisée détectée)."
+                HardwareKey.Level.UNKNOWN -> "niveau inconnu."
             },
         )
 
@@ -97,7 +98,7 @@ fun HomeScreen(state: VaultState.Unlocked, vault: VaultService, activity: Fragme
         Text("Sauvegarde", style = MaterialTheme.typography.titleMedium)
         Text(
             "Le fichier est chiffré avant de quitter l'app. Envoie-le vers Proton Drive : seule ta phrase de " +
-                "récupération (sur papier) peut l'ouvrir. L'app se verrouille pendant le partage.",
+                "récupération (sur papier) peut l'ouvrir.",
             style = MaterialTheme.typography.bodyMedium,
         )
         ErrorText(exportError)

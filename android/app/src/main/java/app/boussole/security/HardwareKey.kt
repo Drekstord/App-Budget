@@ -24,7 +24,7 @@ class HardwareKeyInvalidated(cause: Throwable? = null) : Exception(cause)
  */
 class HardwareKey(private val alias: String = "boussole.vault.v1") {
 
-    enum class Level { STRONGBOX, TEE, OTHER }
+    enum class Level { STRONGBOX, TEE, SOFTWARE, UNKNOWN }
 
     private val keyStore: KeyStore = KeyStore.getInstance(PROVIDER).apply { load(null) }
 
@@ -52,10 +52,11 @@ class HardwareKey(private val alias: String = "boussole.vault.v1") {
         when (info.securityLevel) {
             KeyProperties.SECURITY_LEVEL_STRONGBOX -> Level.STRONGBOX
             KeyProperties.SECURITY_LEVEL_TRUSTED_ENVIRONMENT -> Level.TEE
-            else -> Level.OTHER
+            KeyProperties.SECURITY_LEVEL_SOFTWARE -> Level.SOFTWARE
+            else -> Level.UNKNOWN
         }
     } catch (_: Exception) {
-        Level.OTHER
+        Level.UNKNOWN
     }
 
     private fun key(): SecretKey =

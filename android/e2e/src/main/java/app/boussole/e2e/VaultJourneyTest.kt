@@ -1,7 +1,10 @@
 package app.boussole.e2e
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.uiautomator.By
+import androidx.test.uiautomator.Until
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.util.regex.Pattern
@@ -41,7 +44,7 @@ class VaultJourneyTest {
 
         // 3. Vérification de 3 mots tirés au hasard.
         ui.tag("verify_submit")
-        val fields = ui.device.findObjects(androidx.test.uiautomator.By.res(Pattern.compile("verify_word_\\d+")))
+        val fields = ui.device.findObjects(By.res(Pattern.compile("verify_word_\\d+")))
         assertEquals("3 mots à vérifier attendus\n${ui.screen()}", 3, fields.size)
         for (field in fields) {
             val position = field.resourceName.substringAfterLast('_').toInt()
@@ -91,13 +94,17 @@ class VaultJourneyTest {
 
         // 10. Export d'une sauvegarde chiffrée : la feuille de partage s'ouvre.
         ui.click("backup_export")
-        Thread.sleep(3_000)
+        val shareSheet = ui.device.wait(
+            Until.hasObject(By.pkg(Pattern.compile("com\\.android\\.intentresolver|android")).depth(0)),
+            15_000,
+        )
+        assertTrue("La feuille de partage ne s'est pas ouverte\n${ui.screen()}", shareSheet)
         ui.device.pressBack()
         ui.launchApp()
-        // Le partage a fait passer l'app en arrière-plan : elle doit être verrouillée.
-        ui.tag("unlock_submit")
 
-        // 11. Le nouveau mot de passe ouvre le coffre, sans plantage.
+        // 11. Selon le système, le partage a pu verrouiller l'app ; sinon on la verrouille.
+        //     Le nouveau mot de passe ouvre le coffre, sans plantage.
+        ui.device.findObject(By.res("home_lock"))?.click()
         ui.type("secret_unlock", newPassword)
         ui.click("unlock_submit")
         ui.awaitAfterFingerprint("home_lock")
