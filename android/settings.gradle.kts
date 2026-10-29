@@ -38,3 +38,5 @@ rootProject.name = "boussole-android"
 // Le cœur métier est un build Kotlin indépendant, inclus ici tel quel.
 includeBuild("../core")
 include(":app")
+// Tests de bout en bout : pilotent l'APK final installé, comme un utilisateur.
+include(":e2e")

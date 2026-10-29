@@ -19,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -49,10 +50,10 @@ fun ChooseSecretStep(title: String, subtitle: String, onValid: (String) -> Unit,
             "Laisse Proton Pass générer et retenir un mot de passe long. Il ne suffit pas à lui seul : " +
                 "il faudra aussi ton empreinte, sur ce téléphone précis.",
         )
-        SecretField(secret, { secret = it }, "Mot de passe ou code", isNewPassword = true)
-        SecretField(confirmation, { confirmation = it }, "Confirmation", isNewPassword = true, onDone = submit)
+        SecretField(secret, { secret = it }, "Mot de passe ou code", isNewPassword = true, tag = "secret_new")
+        SecretField(confirmation, { confirmation = it }, "Confirmation", isNewPassword = true, tag = "secret_confirm", onDone = submit)
         ErrorText(error)
-        PrimaryButton("Continuer", submit, enabled = secret.isNotEmpty() && confirmation.isNotEmpty())
+        PrimaryButton("Continuer", submit, enabled = secret.isNotEmpty() && confirmation.isNotEmpty(), tag = "secret_submit")
         SecondaryButton("Retour", onBack)
     }
 }
@@ -73,19 +74,24 @@ fun ShowPhraseStep(words: List<String>, onNext: () -> Unit, onBack: () -> Unit) 
             for (column in 0 until 2) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     for (i in column * 12 until column * 12 + 12) {
-                        Text("${i + 1}. ${words[i]}", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            "${i + 1}. ${words[i]}",
+                            Modifier.testTag("phrase_word_$i"),
+                            fontFamily = FontFamily.Monospace,
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
                     }
                 }
             }
         }
         Row(
-            Modifier.fillMaxWidth().toggleable(value = copied, onValueChange = { copied = it }, role = Role.Checkbox),
+            Modifier.fillMaxWidth().testTag("phrase_copied").toggleable(value = copied, onValueChange = { copied = it }, role = Role.Checkbox),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Checkbox(checked = copied, onCheckedChange = null)
             Text("J'ai recopié les 24 mots sur papier.")
         }
-        PrimaryButton("Continuer", onNext, enabled = copied)
+        PrimaryButton("Continuer", onNext, enabled = copied, tag = "phrase_next")
         SecondaryButton("Retour", onBack)
     }
 }
@@ -104,7 +110,7 @@ fun VerifyPhraseStep(words: List<String>, onVerified: () -> Unit, onBack: () -> 
                 onValueChange = { answers[i] = it },
                 label = { Text("Mot n° ${position + 1}") },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().testTag("verify_word_$position"),
             )
         }
         ErrorText(error)
@@ -115,7 +121,7 @@ fun VerifyPhraseStep(words: List<String>, onVerified: () -> Unit, onBack: () -> 
             } else {
                 error = "Au moins un mot ne correspond pas : vérifie ta copie."
             }
-        })
+        }, tag = "verify_submit")
         SecondaryButton("Revoir la phrase", onBack)
     }
 }
@@ -135,7 +141,7 @@ fun EnterPhraseStep(title: String, subtitle: String, check: (RecoveryPhrase) -> 
             } catch (e: InvalidPhrase) {
                 e.message
             }
-        }, enabled = text.isNotBlank())
+        }, enabled = text.isNotBlank(), tag = "phrase_submit")
         SecondaryButton("Retour", onBack)
     }
 }
@@ -190,7 +196,7 @@ fun BiometricStep(
                     busy = false
                 }
             }
-        }, enabled = availability == BiometricAvailability.READY, busy = busy)
+        }, enabled = availability == BiometricAvailability.READY, busy = busy, tag = "biometric_action")
         SecondaryButton("Retour", onBack)
     }
 }

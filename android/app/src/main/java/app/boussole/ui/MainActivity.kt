@@ -8,8 +8,17 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.fragment.app.FragmentActivity
 import app.boussole.BoussoleApp
+import app.boussole.CrashReports
 import app.boussole.vault.VaultService
 import app.boussole.vault.VaultState
 
@@ -34,10 +43,33 @@ class MainActivity : FragmentActivity() {
 
 @Composable
 private fun BoussoleRoot(vault: VaultService, activity: FragmentActivity) {
+    var crashReport by remember { mutableStateOf(CrashReports.read(activity)) }
+    crashReport?.let { report ->
+        CrashScreen(report) {
+            CrashReports.clear(activity)
+            crashReport = null
+        }
+        return
+    }
     val state by vault.state.collectAsState()
     when (val current = state) {
         VaultState.Empty -> WelcomeFlow(vault, activity)
         is VaultState.Locked -> LockedFlow(current, vault, activity)
         is VaultState.Unlocked -> HomeScreen(current, vault, activity)
+    }
+}
+
+@Composable
+private fun CrashScreen(report: String, onDismiss: () -> Unit) {
+    val clipboard = LocalClipboardManager.current
+    var copied by remember { mutableStateOf(false) }
+    Screen {
+        Title("L'app a planté", "Désolé. Copie ce rapport et envoie-le moi : il ne contient aucune donnée personnelle.")
+        PrimaryButton(if (copied) "Rapport copié ✓" else "Copier le rapport", {
+            clipboard.setText(AnnotatedString(report))
+            copied = true
+        }, tag = "crash_copy")
+        SecondaryButton("Continuer", onDismiss, tag = "crash_dismiss")
+        Text(report, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
     }
 }

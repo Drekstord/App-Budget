@@ -34,7 +34,7 @@ fun WelcomeFlow(vault: VaultService, activity: FragmentActivity) {
                     "• Tout est chiffré ; l'ouverture exige ton empreinte ET ton mot de passe.\n" +
                     "• Une phrase de 24 mots, sur papier, permet de tout récupérer.",
             )
-            PrimaryButton("Créer mon coffre", { screen = Welcome.CREATE })
+            PrimaryButton("Créer mon coffre", { screen = Welcome.CREATE }, tag = "welcome_create")
             SecondaryButton("Restaurer une sauvegarde", { screen = Welcome.RESTORE })
         }
         Welcome.CREATE -> CreateFlow(vault, activity, onCancel = { screen = Welcome.HOME })

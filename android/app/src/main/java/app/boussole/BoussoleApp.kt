@@ -12,6 +12,7 @@ class BoussoleApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        if (resources.getBoolean(R.bool.is_test_build)) CrashReports.install(this)
         vault = VaultService(this)
         // Verrouillage dès que l'app quitte l'écran (SEC-5) : écran éteint,
         // retour à l'accueil, changement d'app, partage d'une sauvegarde…

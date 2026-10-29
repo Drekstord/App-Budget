@@ -22,6 +22,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
@@ -47,7 +48,7 @@ fun HomeScreen(state: VaultState.Unlocked, vault: VaultService, activity: Fragme
     Screen {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text("Boussole", Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall)
-            TextButton(onClick = vault::lock) { Text("Verrouiller") }
+            TextButton(onClick = vault::lock, modifier = Modifier.testTag("home_lock")) { Text("Verrouiller") }
         }
         InfoCard(
             "Coffre ouvert",
@@ -120,7 +121,7 @@ fun HomeScreen(state: VaultState.Unlocked, vault: VaultService, activity: Fragme
                     exporting = false
                 }
             }
-        }, busy = exporting)
+        }, busy = exporting, tag = "backup_export")
     }
 }
 
@@ -137,21 +138,21 @@ private fun AddExpenseForm(onAdd: (amountCents: Long, label: String) -> Unit) {
                 label = { Text("Montant") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).testTag("expense_amount"),
             )
             OutlinedTextField(
                 value = label,
                 onValueChange = { label = it },
                 label = { Text("Libellé") },
                 singleLine = true,
-                modifier = Modifier.weight(2f),
+                modifier = Modifier.weight(2f).testTag("expense_label"),
             )
         }
         PrimaryButton("Ajouter une dépense fictive", {
             onAdd(checkNotNull(cents), label.trim().ifEmpty { "Dépense" })
             amount = ""
             label = ""
-        }, enabled = cents != null)
+        }, enabled = cents != null, tag = "expense_add")
     }
 }
 

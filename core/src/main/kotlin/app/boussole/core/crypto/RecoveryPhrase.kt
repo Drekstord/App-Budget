@@ -101,7 +101,9 @@ class RecoveryPhrase private constructor(private val entropy: ByteArray) {
 
 /** Liste BIP39 française, dont l'intégrité est vérifiée au chargement. */
 internal object Wordlist {
-    private const val RESOURCE = "bip39-fr.txt"
+    // Chemin absolu : l'optimiseur R8 renomme et déplace les classes dans l'APK,
+    // un chemin relatif au paquet de cette classe n'y serait plus trouvé.
+    private const val RESOURCE = "/app/boussole/core/crypto/bip39-fr.txt"
     private const val SHA256 = "ebc3959ab7801a1df6bac4fa7d970652f1df76b683cd2f4003c941c63d517e59"
 
     val words: List<String>

@@ -48,5 +48,12 @@ docs/      Exigences et sécurité
 ./gradlew -p android :app:assembleRelease   # APK (nécessite le SDK Android)
 ```
 
-La CI (`.github/workflows/android.yml`) lance les tests, construit l'APK,
-vérifie l'absence de permission réseau et publie l'APK de test en artefact.
+La CI (`.github/workflows/android.yml`) enchaîne, à chaque envoi :
+
+1. les tests du cœur ;
+2. la construction de l'APK final (optimisé par R8) et le contrôle de
+   l'absence de permission réseau ;
+3. **le parcours utilisateur complet sur un émulateur Android**, sur cet APK
+   exact (module `android/e2e`, UI Automator) : création du coffre, empreinte,
+   verrouillage, mauvais mot de passe, récupération par la phrase, export ;
+4. seulement si tout est vert : publication sur le lien de test.

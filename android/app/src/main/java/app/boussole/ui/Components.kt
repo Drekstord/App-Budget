@@ -31,7 +31,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.res.booleanResource
 import androidx.compose.ui.semantics.contentType
@@ -44,9 +47,15 @@ import androidx.compose.ui.unit.dp
 import app.boussole.R
 import app.boussole.core.vault.SecretPolicy
 
+// Les repères `testTag` sont exposés comme identifiants d'accessibilité : c'est
+// ce qui permet aux tests de bout en bout (UI Automator) de piloter l'APK final.
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun Screen(content: @Composable ColumnScope.() -> Unit) {
-    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+    Surface(
+        Modifier.fillMaxSize().semantics { testTagsAsResourceId = true },
+        color = MaterialTheme.colorScheme.background,
+    ) {
         Column(
             Modifier
                 .fillMaxSize()
@@ -110,8 +119,8 @@ fun ErrorText(message: String?) {
 }
 
 @Composable
-fun PrimaryButton(text: String, onClick: () -> Unit, enabled: Boolean = true, busy: Boolean = false) {
-    Button(onClick = onClick, enabled = enabled && !busy, modifier = Modifier.fillMaxWidth()) {
+fun PrimaryButton(text: String, onClick: () -> Unit, enabled: Boolean = true, busy: Boolean = false, tag: String = "") {
+    Button(onClick = onClick, enabled = enabled && !busy, modifier = Modifier.fillMaxWidth().tagged(tag)) {
         if (busy) {
             CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
             Spacer(Modifier.width(8.dp))
@@ -121,8 +130,8 @@ fun PrimaryButton(text: String, onClick: () -> Unit, enabled: Boolean = true, bu
 }
 
 @Composable
-fun SecondaryButton(text: String, onClick: () -> Unit) {
-    TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) { Text(text) }
+fun SecondaryButton(text: String, onClick: () -> Unit, tag: String = "") {
+    TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth().tagged(tag)) { Text(text) }
 }
 
 /**
@@ -135,6 +144,7 @@ fun SecretField(
     onValueChange: (String) -> Unit,
     label: String,
     isNewPassword: Boolean,
+    tag: String,
     onDone: (() -> Unit)? = null,
 ) {
     var visible by remember { mutableStateOf(false) }
@@ -155,6 +165,7 @@ fun SecretField(
         },
         modifier = Modifier
             .fillMaxWidth()
+            .testTag(tag)
             .semantics { contentType = if (isNewPassword) ContentType.NewPassword else ContentType.Password },
     )
 }
@@ -169,7 +180,7 @@ fun PhraseField(value: String, onValueChange: (String) -> Unit) {
         minLines = 4,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
         supportingText = { Text("Séparés par des espaces. Accents et majuscules facultatifs ; les 4 premières lettres suffisent.") },
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().testTag("phrase_input"),
     )
 }
 
@@ -188,3 +199,6 @@ fun LabeledRow(label: String, value: String) {
         Text(value, style = MaterialTheme.typography.bodyMedium)
     }
 }
+
+/** Repère de test facultatif (aucun si [tag] est vide). */
+fun Modifier.tagged(tag: String): Modifier = if (tag.isEmpty()) this else testTag(tag)

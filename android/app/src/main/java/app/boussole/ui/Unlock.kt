@@ -77,7 +77,7 @@ private fun UnlockScreen(state: VaultState.Locked, vault: VaultService, activity
 
     Screen {
         Title("Coffre verrouillé", "Mot de passe, puis empreinte.")
-        SecretField(password, { password = it }, "Mot de passe ou code", isNewPassword = false, onDone = submit)
+        SecretField(password, { password = it }, "Mot de passe ou code", isNewPassword = false, tag = "secret_unlock", onDone = submit)
         if (waitSeconds > 0) {
             InfoCard(
                 "Trop d'échecs",
@@ -86,8 +86,8 @@ private fun UnlockScreen(state: VaultState.Locked, vault: VaultService, activity
             )
         }
         ErrorText(error)
-        PrimaryButton("Déverrouiller", submit, enabled = password.isNotEmpty() && waitSeconds == 0L, busy = busy)
-        SecondaryButton("Mot de passe oublié : utiliser ma phrase de récupération", onForgot)
+        PrimaryButton("Déverrouiller", submit, enabled = password.isNotEmpty() && waitSeconds == 0L, busy = busy, tag = "unlock_submit")
+        SecondaryButton("Mot de passe oublié : utiliser ma phrase de récupération", onForgot, tag = "unlock_forgot")
     }
 }
 

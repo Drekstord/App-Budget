@@ -44,3 +44,13 @@ commit elle correspond et donne son empreinte SHA-256.
    → nouveau mot de passe.
 
 Note tout ce qui te surprend, même un détail : c'est exactement ce qu'il me faut.
+
+## Si l'app plante
+
+Les versions de test notent le plantage **sur le téléphone** (rien n'est
+envoyé). Au lancement suivant, un écran « L'app a planté » s'affiche :
+touche **Copier le rapport** et colle-le moi. Il ne contient que la pile
+d'appels technique, aucune donnée.
+
+Chaque version publiée sur le lien a d'abord passé le parcours complet sur un
+émulateur Android : création du coffre, empreinte, verrouillage, récupération…
