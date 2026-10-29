@@ -13,6 +13,10 @@ adb shell svc power stayon true
 adb shell settings put system screen_off_timeout 1800000
 adb shell locksettings set-pin 1111
 adb shell input keyevent 82 || true
+# Laisser le système finir de démarrer (évite les « … ne répond pas »).
+adb wait-for-device
+until [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1" ]; do sleep 2; done
+sleep 20
 
 adb install -r "$APK"
 adb install -r "$TEST_APK"
@@ -28,6 +32,10 @@ set +e
 adb shell am instrument -w -r app.boussole.e2e/androidx.test.runner.AndroidJUnitRunner | tee e2e-results/instrument.txt
 set -e
 adb logcat -d > e2e-results/logcat.txt
+
+echo "::group::Écrans parcourus par le test (logcat)"
+grep "BoussoleE2E" e2e-results/logcat.txt | tail -n 60 || true
+echo "::endgroup::"
 
 echo "::group::Plantages de l'app (logcat)"
 grep -n -A 40 "FATAL EXCEPTION" e2e-results/logcat.txt || echo "Aucun plantage."

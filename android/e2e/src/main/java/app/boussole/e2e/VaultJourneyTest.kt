@@ -51,7 +51,7 @@ class VaultJourneyTest {
 
         // 4. Empreinte (le doigt virtuel valide l'invite), puis coffre ouvert.
         ui.click("biometric_action")
-        ui.tag("home_lock", timeout = 60_000)
+        ui.awaitAfterFingerprint("home_lock")
         ui.expectText("Coffre ouvert")
 
         // 5. Une opération fictive.
@@ -64,12 +64,12 @@ class VaultJourneyTest {
         ui.click("home_lock")
         ui.type("secret_unlock", "mauvais-mot-de-passe")
         ui.click("unlock_submit")
-        ui.expectText("Mot de passe incorrect", timeout = 60_000)
+        ui.awaitTextAfterFingerprint("Mot de passe incorrect")
 
         // 7. Bon mot de passe : les données sont toujours là.
         ui.type("secret_unlock", password)
         ui.click("unlock_submit")
-        ui.tag("home_lock", timeout = 60_000)
+        ui.awaitAfterFingerprint("home_lock")
         ui.expectText("Café test")
 
         // 8. Passage en arrière-plan : le coffre se verrouille.
@@ -86,7 +86,7 @@ class VaultJourneyTest {
         ui.type("secret_confirm", newPassword)
         ui.click("secret_submit")
         ui.click("biometric_action")
-        ui.tag("home_lock", timeout = 60_000)
+        ui.awaitAfterFingerprint("home_lock")
         ui.expectText("Café test")
 
         // 10. Export d'une sauvegarde chiffrée : la feuille de partage s'ouvre.
@@ -100,7 +100,7 @@ class VaultJourneyTest {
         // 11. Le nouveau mot de passe ouvre le coffre, sans plantage.
         ui.type("secret_unlock", newPassword)
         ui.click("unlock_submit")
-        ui.tag("home_lock", timeout = 60_000)
+        ui.awaitAfterFingerprint("home_lock")
         ui.expectNoCrashReport()
     }
 }

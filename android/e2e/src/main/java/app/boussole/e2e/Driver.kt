@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.hardware.biometrics.BiometricManager
 import android.provider.Settings
+import android.util.Log
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.BySelector
@@ -15,6 +16,7 @@ import org.junit.Assert.fail
 import java.util.regex.Pattern
 
 const val APP_PACKAGE = "app.boussole"
+const val LOG_TAG = "BoussoleE2E"
 private const val DEFAULT_TIMEOUT = 20_000L
 
 /** Pilote de l'app par l'accessibilité, avec des messages d'échec qui montrent l'écran. */
@@ -30,22 +32,50 @@ class Driver {
         device.wait(Until.hasObject(By.pkg(APP_PACKAGE).depth(0)), DEFAULT_TIMEOUT)
     }
 
+    /**
+     * Ferme les dialogues système « … ne répond pas » (fréquents sur un émulateur
+     * chargé) en choisissant d'attendre. Rend vrai si un dialogue a été fermé.
+     */
+    fun dismissSystemDialogs(): Boolean {
+        val wait = device.findObject(By.res("android:id/aerr_wait")) ?: return false
+        Log.i(LOG_TAG, "Dialogue système fermé : ${screen()}")
+        wait.click()
+        return true
+    }
+
     /** Trouve un élément, en faisant défiler l'écran si besoin ; échoue avec l'état de l'écran sinon. */
-    fun find(selector: BySelector, what: String, timeout: Long = DEFAULT_TIMEOUT): UiObject2 {
-        device.wait(Until.findObject(selector), timeout)?.let { return it }
-        repeat(2) { pass ->
-            val direction = if (pass == 0) Direction.DOWN else Direction.UP
-            repeat(8) {
-                device.findObject(selector)?.let { return it }
-                device.findObject(By.scrollable(true))?.scroll(direction, 0.7f) ?: return@repeat
-            }
+    fun find(selector: BySelector, what: String, timeout: Long = DEFAULT_TIMEOUT, scroll: Boolean = true): UiObject2 {
+        val deadline = System.currentTimeMillis() + timeout
+        while (System.currentTimeMillis() < deadline) {
+            device.wait(Until.findObject(selector), 1_500)?.let { return it }
+            if (dismissSystemDialogs()) continue
+            if (scroll) scrollTo(selector)?.let { return it }
         }
-        device.findObject(selector)?.let { return it }
         fail("Introuvable : $what\n${screen()}")
         error("inaccessible")
     }
 
+    /** Fait défiler l'écran vers le bas puis vers le haut à la recherche de l'élément. */
+    private fun scrollTo(selector: BySelector): UiObject2? {
+        val scrollable = device.findObject(By.scrollable(true)) ?: return null
+        for (direction in listOf(Direction.DOWN, Direction.UP)) {
+            repeat(6) {
+                device.findObject(selector)?.let { return it }
+                if (!scrollable.scroll(direction, 0.7f)) return@repeat
+            }
+        }
+        return device.findObject(selector)
+    }
+
     fun tag(tag: String, timeout: Long = DEFAULT_TIMEOUT) = find(By.res(tag), "élément « $tag »", timeout)
+
+    /**
+     * Attend un élément après une demande d'empreinte, sans faire défiler : un
+     * geste sur l'écran pourrait annuler l'invite biométrique.
+     */
+    fun awaitAfterFingerprint(tag: String) = find(By.res(tag), "élément « $tag »", 90_000, scroll = false)
+
+    fun awaitTextAfterFingerprint(text: String) = find(By.textContains(text), "texte « $text »", 90_000, scroll = false)
 
     fun type(tag: String, value: String) {
         tag(tag).text = value
@@ -88,6 +118,11 @@ class Driver {
         val buttons = Pattern.compile("(?i)^(i agree|agree|more|next|continue|start|ok|got it|done)$")
         val deadline = System.currentTimeMillis() + 120_000
         while (!enrolled() && System.currentTimeMillis() < deadline) {
+            Log.i(LOG_TAG, "Enregistrement de l'empreinte — ${screen()}")
+            if (dismissSystemDialogs()) {
+                Thread.sleep(1_500)
+                continue
+            }
             val pin = device.findObject(By.clazz("android.widget.EditText"))
             if (pin != null) {
                 pin.text = "1111"
