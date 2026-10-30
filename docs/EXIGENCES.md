@@ -52,7 +52,7 @@ bonus, prévu par l'architecture mais pas développé dans un premier temps.
 | Capture des dépenses | Lecture des notifications des apps bancaires et de Wallet (liste blanche) + import de relevés CSV/OFX + saisie manuelle + ticket de caisse |
 | Conseils | Moteur déterministe : calculs explicables et testés, sans IA ni réseau |
 | Sauvegarde | Fichier chiffré, transmis à Proton Drive via le menu « Partager » d'Android. Seule la phrase de récupération permet de le déchiffrer. |
-| Distribution | APK signé. Les builds de test ne portent que des données fictives tant que la clé de signature définitive n'est pas en place. |
+| Distribution | APK signé. Versions de test : clé temporaire, sauvegarde chiffrée avant chaque mise à jour et restauration ensuite ; clé définitive gardée par l'utilisateur pour l'usage réel. |
 | Langue / devise | Français, euro (`1 234,56 €`), montants en centimes entiers |
 
 ## 3. Exigences fonctionnelles
@@ -178,7 +178,7 @@ bonus, prévu par l'architecture mais pas développé dans un premier temps.
 | Phase | Contenu | Livrable |
 |---|---|---|
 | 0 | Cadrage : ce document, [SECURITE.md](SECURITE.md) | Validation par l'utilisateur |
-| 1 | **Socle sécurisé** : empreinte + mot de passe, phrase de récupération, coffre chiffré, sauvegarde chiffrée | APK de test (données fictives) |
+| 1 | **Socle sécurisé** : empreinte + mot de passe, phrase de récupération, coffre chiffré, sauvegarde chiffrée | APK de test |
 | 2 | **Capture** : mode diagnostic des notifications, puis captation et import CSV/OFX | APK : les dépenses remontent seules |
 | 3 | **Validation et apprentissage** : file « à valider », règles, rappel du soir | APK utilisable au quotidien |
 | 4 | **Profil de vie, enveloppes, mode redressement** | Sortie du négatif guidée |
