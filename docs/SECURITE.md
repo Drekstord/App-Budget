@@ -65,16 +65,30 @@ classement, phrase de récupération, mot de passe.
   de 96 bits et des **données associées** (type d'enveloppe, version), ce qui
   empêche d'échanger une enveloppe contre une autre.
 
-### Règle d'or sur Proton
+### Où ranger la phrase : décision de l'utilisateur (30/10/2026)
 
-> 🔴 **La phrase de récupération ne doit JAMAIS être stockée chez Proton**
-> (ni Pass, ni Drive, ni mail). Les sauvegardes sont sur Proton Drive : si la
-> phrase y était aussi, une seule compromission du compte Proton donnerait
-> tout. Elle reste **sur papier**, rangée chez toi, avec idéalement une
-> seconde copie dans un autre lieu.
->
-> Le mot de passe d'ouverture, lui, peut aller dans Proton Pass : sans le
-> téléphone et ton empreinte, il est inutile.
+La phrase de récupération ouvre toutes les sauvegardes. La recommandation
+était de la garder **uniquement sur papier**, car les sauvegardes sont sur
+Proton Drive : si la phrase y est aussi, **une compromission du compte Proton
+donne tout**.
+
+**Décision** : l'utilisateur range la phrase sur **Proton Drive**, avec ses
+autres codes. L'app propose donc de la **copier** (presse-papiers marqué
+« sensible », vidé au bout de 60 s) ou de l'**enregistrer en fichier** via la
+feuille de partage (copie temporaire effacée en quittant l'écran), toujours
+après un avertissement. Les captures d'écran restent bloquées : elles
+partiraient dans la Galerie et ses synchronisations.
+
+**Conséquence** : le compte Proton devient le point unique de défaillance
+(risque R17). Contre-mesures demandées à l'utilisateur :
+
+- **double authentification** sur le compte Proton (clé de sécurité ou
+  application TOTP), mot de passe Proton unique et long ;
+- idéalement, une copie papier en plus, au cas où le compte Proton serait perdu.
+
+> À noter : la sauvegarde Google One du téléphone **ne contient pas**
+> Boussole (`allowBackup="false"` et règles d'extraction qui excluent tout).
+> La seule sauvegarde est le fichier chiffré exporté volontairement.
 
 ## 4. Mesures
 
@@ -109,8 +123,8 @@ F = faible, M = moyen, É = élevé.
 | R2 | Vol du téléphone verrouillé, extraction des fichiers | F | É | Enveloppe matérielle StrongBox : fichiers inexploitables hors de la puce | F |
 | R3 | App malveillante sur le téléphone (accessibilité, superposition) | F | Critique | `FLAG_SECURE`, filtrage des touches quand une fenêtre est masquée, conseil de prudence sur les apps à accessibilité | M |
 | R4 | Exfiltration par le code de l'app ou une dépendance | F | Critique | **Pas d'INTERNET**, dépendances minimales et vérifiées | F |
-| R5 | Fuite par une sauvegarde | M | Critique | Sauvegarde toujours chiffrée ; phrase de récupération jamais chez Proton | F |
-| R6 | Perte de données (téléphone perdu ou cassé, empreinte invalidée) | M | É | Phrase de récupération sur papier, sauvegarde chiffrée hebdomadaire rappelée, restauration testée | F |
+| R5 | Fuite par une sauvegarde | M | Critique | Sauvegarde toujours chiffrée ; seule la phrase de récupération l'ouvre (voir R17) | F |
+| R6 | Perte de données (téléphone perdu ou cassé, empreinte invalidée) | M | É | Phrase de récupération en lieu sûr, sauvegarde chiffrée hebdomadaire rappelée, restauration testée | F |
 | R7 | Oubli du mot de passe | M | M | Restauration par la phrase de récupération ; mot de passe dans Proton Pass | F |
 | R8 | Détournement de la lecture des notifications | F | M | Liste blanche stricte, extraction minimale, rien de brut conservé | F |
 | R9 | La banque change le format de ses notifications | É | M | Détection des trous (CAP-5), import CSV/OFX en rattrapage, analyseurs testés | F |
@@ -121,6 +135,7 @@ F = faible, M = moyen, É = élevé.
 | R14 | Compte GitHub compromis (code piégé poussé) | F | É | 2FA obligatoire, branches protégées, revue des diffs avant chaque installation | M |
 | R15 | Erreur de conception ou de développement | M | É | Ce document, des tests (crypto incluse), une revue de sécurité à chaque phase, un audit final | M |
 | R16 | Clavier tiers qui enregistre la saisie | F | M | Clavier en mode incognito sur les champs sensibles, Proton Pass pour le mot de passe | F |
+| R17 | Compte Proton compromis alors qu'il contient la phrase **et** les sauvegardes (décision du 30/10) | F | Critique | Double authentification Proton, mot de passe unique ; copie de la phrase marquée sensible et effacée après 60 s | M (accepté) |
 
 ## 6. Risques résiduels acceptés
 

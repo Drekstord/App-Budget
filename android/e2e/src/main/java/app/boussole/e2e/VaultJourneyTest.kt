@@ -16,6 +16,8 @@ import java.util.regex.Pattern
  *
  * Un seul test, car les étapes s'enchaînent sur le même coffre.
  */
+private val SHARE_SHEET = Pattern.compile("com\\.android\\.intentresolver|android")
+
 @RunWith(AndroidJUnit4::class)
 class VaultJourneyTest {
     private val ui = Driver()
@@ -39,6 +41,18 @@ class VaultJourneyTest {
             text.substringAfter(". ").also { assert(it.isNotBlank()) { "Mot $i vide : « $text »" } }
         }
         assertEquals(24, words.size)
+
+        // Copie (avec avertissement) puis enregistrement en fichier : feuille de partage.
+        ui.click("phrase_copy")
+        ui.click("phrase_export_confirm")
+        ui.expectText("Phrase copiée")
+        ui.click("phrase_share")
+        ui.click("phrase_export_confirm")
+        assertTrue(
+            "La feuille de partage de la phrase ne s'est pas ouverte\n${ui.screen()}",
+            ui.device.wait(Until.hasObject(By.pkg(SHARE_SHEET).depth(0)), 15_000),
+        )
+        ui.device.pressBack()
         ui.click("phrase_copied")
         ui.click("phrase_next")
 
@@ -95,7 +109,7 @@ class VaultJourneyTest {
         // 10. Export d'une sauvegarde chiffrée : la feuille de partage s'ouvre.
         ui.click("backup_export")
         val shareSheet = ui.device.wait(
-            Until.hasObject(By.pkg(Pattern.compile("com\\.android\\.intentresolver|android")).depth(0)),
+            Until.hasObject(By.pkg(SHARE_SHEET).depth(0)),
             15_000,
         )
         assertTrue("La feuille de partage ne s'est pas ouverte\n${ui.screen()}", shareSheet)

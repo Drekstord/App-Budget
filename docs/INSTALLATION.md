@@ -30,7 +30,8 @@ commit elle correspond et donne son empreinte SHA-256.
 ## 3. Ce qu'il faut tester (phase 1)
 
 1. **Création** : mot de passe (Proton Pass doit proposer d'en générer un),
-   phrase de 24 mots, vérification de 3 mots, empreinte.
+   phrase de 24 mots (boutons « Copier » et « Enregistrer en fichier » vers
+   Proton Drive), vérification de 3 mots, empreinte.
 2. **Verrouillage** : touche « Accueil » puis reviens → le coffre doit être
    verrouillé. Même chose en éteignant l'écran.
 3. **Ouverture** : mot de passe puis empreinte. Essaie un mauvais mot de passe.

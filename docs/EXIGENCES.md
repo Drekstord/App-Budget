@@ -62,7 +62,10 @@ bonus, prévu par l'architecture mais pas développé dans un premier temps.
   ou d'un **code** (au moins 6 chiffres). Le champ accepte le remplissage
   automatique de Proton Pass.
 - **SEC-2** Génération d'une **phrase de récupération de 24 mots** (liste BIP39
-  française), à recopier sur papier, puis vérifiée par la saisie de 3 mots tirés au hasard.
+  française), à conserver en lieu sûr : copie papier recommandée ; **copie**
+  (presse-papiers sensible, vidé après 60 s) ou **fichier** partagé possibles
+  après avertissement (décision du 30/10, cf. SECURITE.md §3). Vérifiée ensuite
+  par la saisie de 3 mots tirés au hasard. Captures d'écran toujours bloquées.
 - **SEC-3** Enrôlement de l'empreinte : la clé matérielle n'est utilisable
   qu'après une authentification biométrique forte (classe 3).
 - **SEC-4** Ouverture : **empreinte puis mot de passe**, les deux sont indispensables.

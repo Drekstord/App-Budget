@@ -5,11 +5,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -17,10 +21,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
@@ -58,17 +65,26 @@ fun ChooseSecretStep(title: String, subtitle: String, onValid: (String) -> Unit,
     }
 }
 
-/** Affiche les 24 mots à recopier sur papier. */
+private enum class PhraseAction { COPY, SHARE }
+
+/** Affiche les 24 mots ; ils peuvent être recopiés, copiés ou enregistrés en fichier. */
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun ShowPhraseStep(words: List<String>, onNext: () -> Unit, onBack: () -> Unit) {
-    var copied by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    var secured by remember { mutableStateOf(false) }
+    var pending by remember { mutableStateOf<PhraseAction?>(null) }
+    var notice by remember { mutableStateOf<String?>(null) }
+    DisposableEffect(Unit) { onDispose { PhraseExport.deleteFile(context) } }
+
     Screen {
         Title("Ta phrase de récupération", "La seule façon de retrouver tes données si tu perds ce téléphone ou si tes empreintes changent.")
         InfoCard(
-            "Sur papier, uniquement",
-            "Recopie ces 24 mots à la main, dans l'ordre. Ne les photographie pas et ne les stocke JAMAIS chez " +
-                "Proton (Pass, Drive, mail) ni dans aucun cloud : tes sauvegardes y sont, et cette phrase les ouvre.",
-            Tone.DANGER,
+            "À garder en lieu sûr",
+            "Ces 24 mots ouvrent toutes tes sauvegardes, sur n'importe quel téléphone. Le plus sûr reste une copie " +
+                "papier. Si tu les ranges chez Proton à côté de tes sauvegardes, ton compte Proton protège alors tout : " +
+                "active sa double authentification.",
+            Tone.WARNING,
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             for (column in 0 until 2) {
@@ -84,26 +100,70 @@ fun ShowPhraseStep(words: List<String>, onNext: () -> Unit, onBack: () -> Unit) 
                 }
             }
         }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = { pending = PhraseAction.COPY }, modifier = Modifier.weight(1f).testTag("phrase_copy")) {
+                Text("Copier")
+            }
+            OutlinedButton(onClick = { pending = PhraseAction.SHARE }, modifier = Modifier.weight(1f).testTag("phrase_share")) {
+                Text("Enregistrer en fichier")
+            }
+        }
+        notice?.let { Text(it, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("phrase_notice")) }
         Row(
-            Modifier.fillMaxWidth().testTag("phrase_copied").toggleable(value = copied, onValueChange = { copied = it }, role = Role.Checkbox),
+            Modifier.fillMaxWidth().testTag("phrase_copied").toggleable(value = secured, onValueChange = { secured = it }, role = Role.Checkbox),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Checkbox(checked = copied, onCheckedChange = null)
-            Text("J'ai recopié les 24 mots sur papier.")
+            Checkbox(checked = secured, onCheckedChange = null)
+            Text("J'ai mis ma phrase en lieu sûr.")
         }
-        PrimaryButton("Continuer", onNext, enabled = copied, tag = "phrase_next")
+        PrimaryButton("Continuer", onNext, enabled = secured, tag = "phrase_next")
         SecondaryButton("Retour", onBack)
+    }
+
+    pending?.let { action ->
+        AlertDialog(
+            onDismissRequest = { pending = null },
+            title = { Text("Avant de sortir la phrase de l'app") },
+            text = {
+                Text(
+                    if (action == PhraseAction.COPY) {
+                        "Le clavier peut garder un historique du presse-papiers. Colle la phrase tout de suite là où tu " +
+                            "la ranges : le presse-papiers sera vidé dans 60 secondes."
+                    } else {
+                        "Envoie le fichier directement dans Proton Drive, pas dans Téléchargements ni un autre cloud. " +
+                            "L'app efface sa copie temporaire dès que tu quittes cet écran."
+                    },
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pending = null
+                        when (action) {
+                            PhraseAction.COPY -> {
+                                PhraseExport.copy(context, words)
+                                notice = "Phrase copiée. Le presse-papiers sera vidé dans 60 secondes."
+                            }
+                            PhraseAction.SHARE -> PhraseExport.share(context, words)
+                        }
+                    },
+                    // Le dialogue est une fenêtre à part : il expose lui-même ses repères de test.
+                    modifier = Modifier.semantics { testTagsAsResourceId = true }.testTag("phrase_export_confirm"),
+                ) { Text(if (action == PhraseAction.COPY) "Copier" else "Enregistrer") }
+            },
+            dismissButton = { TextButton(onClick = { pending = null }) { Text("Annuler") } },
+        )
     }
 }
 
-/** Vérifie 3 mots tirés au hasard, pour s'assurer que la copie papier est juste. */
+/** Vérifie 3 mots tirés au hasard, pour s'assurer que la copie conservée est juste. */
 @Composable
 fun VerifyPhraseStep(words: List<String>, onVerified: () -> Unit, onBack: () -> Unit) {
     val positions = remember { (0 until RecoveryPhrase.WORD_COUNT).shuffled().take(3).sorted() }
     val answers = remember { mutableStateListOf("", "", "") }
     var error by remember { mutableStateOf<String?>(null) }
     Screen {
-        Title("Vérifions ta copie", "Saisis les mots demandés en lisant ta feuille.")
+        Title("Vérifions ta copie", "Saisis les mots demandés en lisant ta copie.")
         positions.forEachIndexed { i, position ->
             OutlinedTextField(
                 value = answers[i],

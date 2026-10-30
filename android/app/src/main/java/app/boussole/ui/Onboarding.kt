@@ -32,7 +32,7 @@ fun WelcomeFlow(vault: VaultService, activity: FragmentActivity) {
                 "Ce qui protège tes données",
                 "• L'app n'a pas accès à Internet : rien ne peut sortir.\n" +
                     "• Tout est chiffré ; l'ouverture exige ton empreinte ET ton mot de passe.\n" +
-                    "• Une phrase de 24 mots, sur papier, permet de tout récupérer.",
+                    "• Une phrase de 24 mots, à garder en lieu sûr, permet de tout récupérer.",
             )
             PrimaryButton("Créer mon coffre", { screen = Welcome.CREATE }, tag = "welcome_create")
             SecondaryButton("Restaurer une sauvegarde", { screen = Welcome.RESTORE })
