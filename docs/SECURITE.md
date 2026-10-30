@@ -90,6 +90,23 @@ partiraient dans la Galerie et ses synchronisations.
 > Boussole (`allowBackup="false"` et règles d'extraction qui excluent tout).
 > La seule sauvegarde est le fichier chiffré exporté volontairement.
 
+### Captures faites coffre fermé : la boîte de réception scellée
+
+Le service qui lit les notifications tourne quand l'app est verrouillée : il n'a
+pas la DEK. Il chiffre donc chaque capture avec une **clé publique X25519**
+(chiffrement hybride : clé éphémère, HKDF-SHA256, AES-256-GCM). La **clé
+privée** correspondante est rangée **dans le coffre chiffré** : seules
+l'empreinte et le mot de passe permettent de relire les captures, qui sont
+intégrées à l'ouverture.
+
+- En clair sur le disque : la clé publique (vérifiée contre la clé privée à
+  chaque ouverture), les noms des apps sources, la date de la dernière capture
+  et de la dernière sauvegarde, le nombre d'opérations à valider et les
+  réglages de rappels. **Aucun montant, aucun marchand, aucun texte de
+  notification.**
+- Les rappels (soir, dimanche, sauvegarde, absence de capture) ne s'appuient
+  que sur ces données en clair et n'affichent jamais de montant.
+
 ## 4. Mesures
 
 | Domaine | Mesure | Phase |
@@ -104,8 +121,11 @@ partiraient dans la Galerie et ses synchronisations.
 | Sauvegarde Android | `allowBackup="false"` + `dataExtractionRules` qui excluent tout : rien ne part dans Google ou Samsung Cloud | 1 |
 | Composants | Seule l'activité de lancement est exportée ; le futur service de notifications est protégé par `BIND_NOTIFICATION_LISTENER_SERVICE` | 1-2 |
 | Sauvegarde | Fichier chiffré (DEK, avec R dans l'en-tête), partagé via le menu « Partager » ; aucun export complet en clair | 1 |
-| Notifications captées | Liste blanche de paquets ; seuls montant, marchand, date et compte sont extraits ; le texte brut n'est jamais conservé (sauf en mode diagnostic, en mémoire et sur demande) | 2 |
-| Notifications émises | Visibilité `PRIVATE` : aucun montant sur l'écran verrouillé | 3 |
+| Notifications captées | Liste blanche d'apps ; le texte n'est jamais écrit en clair : scellé dans la boîte de réception (X25519 + AES-GCM), analysé à l'ouverture du coffre ; seules les notifications contenant un montant sont retenues (le mode diagnostic, désactivé par défaut, garde aussi les autres, scellées) | 2 |
+| Notifications émises | Visibilité `PRIVATE` + version publique neutre : aucun montant, ni sur l'écran verrouillé ni dans le texte | 3 |
+| Actions externes | Appareil photo, sélecteur de fichiers, partage, réglages : lancés depuis l'app, ils suspendent le verrouillage **3 minutes au plus** ; sinon verrouillage au passage en arrière-plan (délai de grâce réglable 0, 30 ou 60 s) | 2 |
+| Tickets de caisse | OCR ML Kit embarqué (modèle dans l'APK) ; photo écrite dans le cache privé et effacée après analyse ; sans permission INTERNET, la télémétrie de la bibliothèque ne peut rien envoyer | 6 |
+| Tests de bout en bout | Repères de test exposés à l'accessibilité (`testTagsAsResourceId`) : des identifiants d'écran, aucune donnée | 1 |
 | Dépendances | Minimum vital (AndroidX, Compose, Bouncy Castle) ; versions figées ; vérification des sommes de contrôle Gradle (`verification-metadata.xml`) | 1, durci en 6 |
 | Build | R8 (minification et obfuscation) ; build reproductible ; CI qui lance les tests et contrôle les permissions | 1 |
 | Signature | Signature v2 + v3 ; clé définitive générée et conservée **par l'utilisateur** ; rotation possible grâce à la lignée de clés v3 | 6 |
@@ -135,6 +155,8 @@ F = faible, M = moyen, É = élevé.
 | R14 | Compte GitHub compromis (code piégé poussé) | F | É | 2FA obligatoire, branches protégées, revue des diffs avant chaque installation | M |
 | R15 | Erreur de conception ou de développement | M | É | Ce document, des tests (crypto incluse), une revue de sécurité à chaque phase, un audit final | M |
 | R16 | Clavier tiers qui enregistre la saisie | F | M | Clavier en mode incognito sur les champs sensibles, Proton Pass pour le mot de passe | F |
+| R18 | Bibliothèque ML Kit (Google) embarquée pour l'OCR | F | M | Pas de permission INTERNET (vérifiée par la CI) : aucune donnée ne peut sortir ; photo effacée après analyse | F |
+| R19 | Une autre app malveillante notifie en se faisant passer pour une banque | F | F | Liste blanche par nom de paquet (unique sur Android) ; chaque capture reste « à valider » | F |
 | R17 | Compte Proton compromis alors qu'il contient la phrase **et** les sauvegardes (décision du 30/10) | F | Critique | Double authentification Proton, mot de passe unique ; copie de la phrase marquée sensible et effacée après 60 s | M (accepté) |
 
 ## 6. Risques résiduels acceptés

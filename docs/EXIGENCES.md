@@ -169,6 +169,12 @@ bonus, prévu par l'architecture mais pas développé dans un premier temps.
 
 ## 5. Phases
 
+> **État au 30/10/2026** : phases 1 à 5 développées (et le ticket de caisse, le
+> bilan hebdomadaire de la phase 6), testées automatiquement sur émulateur.
+> Reste : peaufinage avec les retours réels ([GUIDE_DE_TEST.md](GUIDE_DE_TEST.md)),
+> audit final et clé de signature définitive.
+
+
 | Phase | Contenu | Livrable |
 |---|---|---|
 | 0 | Cadrage : ce document, [SECURITE.md](SECURITE.md) | Validation par l'utilisateur |

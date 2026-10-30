@@ -27,7 +27,9 @@ commit elle correspond et donne son empreinte SHA-256.
 3. Play Protect peut avertir d'une app inconnue : c'est normal pour une app
    que tu installes toi-même. Choisis « Installer quand même ».
 
-## 3. Ce qu'il faut tester (phase 1)
+## 3. Ce qu'il faut tester
+
+La marche à suivre complète est dans [GUIDE_DE_TEST.md](GUIDE_DE_TEST.md). Vérifications de base :
 
 1. **Création** : mot de passe (Proton Pass doit proposer d'en générer un),
    phrase de 24 mots (boutons « Copier » et « Enregistrer en fichier » vers

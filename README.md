@@ -11,18 +11,21 @@ rien envoyer** : l'app n'a pas accès à Internet.
 - 📋 Exigences : [docs/EXIGENCES.md](docs/EXIGENCES.md)
 - 🛡️ Sécurité, menaces et risques : [docs/SECURITE.md](docs/SECURITE.md)
 - 📱 Installer une version de test : [docs/INSTALLATION.md](docs/INSTALLATION.md)
+- 🧪 Marche à suivre des tests et du peaufinage : [docs/GUIDE_DE_TEST.md](docs/GUIDE_DE_TEST.md)
 
 ## État d'avancement
 
-| Phase | Contenu | État |
+| Domaine | Contenu | État |
 |---|---|---|
-| 0 | Cadrage, modèle de menaces | ✅ |
-| 1 | Socle sécurisé : empreinte + mot de passe, coffre chiffré, phrase de récupération, sauvegarde chiffrée | 🧪 en test |
-| 2 | Capture : notifications bancaires, import CSV/OFX | ⏳ |
-| 3 | Validation et apprentissage du classement | ⏳ |
-| 4 | Profil de vie, enveloppes, mode redressement | ⏳ |
-| 5 | Objectifs (tranquille / équilibré / rapide) | ⏳ |
-| 6 | Tickets de caisse, bilan hebdo, audit final, clé de signature définitive | ⏳ |
+| Sécurité | Empreinte + mot de passe, coffre chiffré, phrase de récupération, sauvegarde chiffrée, aucun accès réseau | ✅ |
+| Capture | Notifications bancaires (liste blanche, captures chiffrées même coffre fermé), relevés CSV/OFX avec rapprochement, tickets (OCR sur le téléphone), saisie | ✅ à valider sur tes banques |
+| Classement | Propositions par règles apprises de tes corrections et mots-clés, file de validation | ✅ |
+| Budget | Mois calé sur la paie réelle, enveloppes strictes 50/30/20 adaptées, couverture des dépassements, disponible réel, charges fixes détectées | ✅ |
+| Conseils | Situation, marche à suivre (redressement), leviers, rythmes tranquille/équilibré/rapide, objectifs, primes | ✅ |
+| Rappels | Soir, dimanche, sauvegarde, absence de capture (sans montant visible) | ✅ |
+| Peaufinage | Avec tes retours : [docs/GUIDE_DE_TEST.md](docs/GUIDE_DE_TEST.md) | 🧪 |
+| Clé définitive | Signature par ta propre clé | ⏳ |
+| Bonus | Version PC, IA locale | ⏳ |
 
 ## Architecture
 
@@ -38,8 +41,8 @@ docs/      Exigences et sécurité
 - **Chiffrement** : AES-256-GCM. Clé de données scellée par Argon2id (mot de
   passe), elle-même scellée par une clé matérielle StrongBox débloquée par
   l'empreinte. Phrase BIP39 de 24 mots pour la récupération.
-- **Dépendances minimales** : AndroidX/Compose, Bouncy Castle (Argon2),
-  kotlinx.serialization. Aucun SDK tiers.
+- **Dépendances minimales** : AndroidX/Compose, Bouncy Castle (Argon2,
+  X25519), kotlinx.serialization, ML Kit (OCR embarqué, sans réseau possible).
 
 ## Développer
 
@@ -54,6 +57,8 @@ La CI (`.github/workflows/android.yml`) enchaîne, à chaque envoi :
 2. la construction de l'APK final (optimisé par R8) et le contrôle de
    l'absence de permission réseau ;
 3. **le parcours utilisateur complet sur un émulateur Android**, sur cet APK
-   exact (module `android/e2e`, UI Automator) : création du coffre, empreinte,
-   verrouillage, mauvais mot de passe, récupération par la phrase, export ;
+   exact (module `android/e2e`, UI Automator) : création du coffre, profil de
+   vie, dépense captée par notification (coffre ouvert et fermé), validation et
+   apprentissage, budget, conseils, objectif, verrouillages, récupération par
+   la phrase, sauvegarde ;
 4. seulement si tout est vert : publication sur le lien de test.
