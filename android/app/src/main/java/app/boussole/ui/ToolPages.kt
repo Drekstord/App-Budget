@@ -273,15 +273,16 @@ fun ReceiptPage(ctx: Ctx) {
             try {
                 val text = ReceiptScanner.recognize(context, uri)
                 val receipt = ReceiptParser.parse(text)
+                val cents = receipt.amountCents
                 ReceiptScanner.deletePhoto(context)
-                if (receipt.amountCents == null) {
+                if (cents == null) {
                     error = "Montant introuvable sur le ticket. Essaie une photo plus nette, à plat, bien éclairée."
                 } else {
                     val draft = Transaction(
                         id = UUID.randomUUID().toString(),
                         createdAt = Instant.now().toString(),
                         date = (receipt.date ?: ctx.today).toString(),
-                        amountCents = -receipt.amountCents,
+                        amountCents = -cents,
                         label = receipt.merchant ?: "Ticket",
                         categoryId = receipt.categoryId,
                         source = TransactionSource.RECEIPT,

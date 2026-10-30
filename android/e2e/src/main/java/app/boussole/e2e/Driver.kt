@@ -1,5 +1,8 @@
 package app.boussole.e2e
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.hardware.biometrics.BiometricManager
@@ -17,6 +20,7 @@ import java.util.regex.Pattern
 
 const val APP_PACKAGE = "app.boussole"
 const val LOG_TAG = "BoussoleE2E"
+private const val CHANNEL = "banque-factice"
 private const val DEFAULT_TIMEOUT = 20_000L
 
 /** Pilote de l'app par l'accessibilité, avec des messages d'échec qui montrent l'écran. */
@@ -89,6 +93,22 @@ class Driver {
 
     fun expectText(text: String, timeout: Long = DEFAULT_TIMEOUT) =
         find(By.textContains(text), "texte « $text »", timeout)
+
+    /** Le test joue le rôle d'une app bancaire (source autorisée dans les versions de test). */
+    fun createNotificationChannel() {
+        val manager = context.getSystemService(NotificationManager::class.java)
+        manager.createNotificationChannel(NotificationChannel(CHANNEL, "Banque factice", NotificationManager.IMPORTANCE_DEFAULT))
+    }
+
+    fun postNotification(id: Int, title: String, text: String) {
+        val notification = Notification.Builder(context, CHANNEL)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle(title)
+            .setContentText(text)
+            .build()
+        context.getSystemService(NotificationManager::class.java).notify(id, notification)
+        Log.i(LOG_TAG, "Notification publiée : $title — $text")
+    }
 
     fun expectNoCrashReport() {
         if (device.findObject(By.res("crash_copy")) != null) fail("L'app a planté :\n${screen()}")

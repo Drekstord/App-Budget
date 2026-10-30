@@ -129,7 +129,7 @@ private fun ChargesStep(ctx: Ctx, data: VaultData, next: () -> Unit, later: () -
             name = ""
             amount = ""
             day = ""
-        }, enabled = name.isNotBlank() && parseEuros(amount) != null, modifier = Modifier.fillMaxWidth()) { Text("+ Ajouter cette charge") }
+        }, enabled = name.isNotBlank() && parseEuros(amount) != null, modifier = Modifier.fillMaxWidth().tagged("onboarding_charge_add")) { Text("+ Ajouter cette charge") }
         StepButtons(next, later)
     }
 }

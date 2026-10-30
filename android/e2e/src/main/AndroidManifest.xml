@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Pour vérifier qu'une empreinte est bien enregistrée sur l'émulateur. -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <!-- Le test joue le rôle d'une app bancaire : il publie des notifications de paiement. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- Visibilité de l'app testée (Android 11+). -->
     <queries>

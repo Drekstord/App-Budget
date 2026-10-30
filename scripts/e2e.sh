@@ -20,6 +20,9 @@ sleep 20
 
 adb install -r "$APK"
 adb install -r "$TEST_APK"
+# Le test publie de fausses notifications bancaires, que l'app doit capter.
+adb shell pm grant app.boussole.e2e android.permission.POST_NOTIFICATIONS
+adb shell cmd notification allow_listener app.boussole/app.boussole.capture.CaptureService
 
 # Doigt virtuel posé en continu : sert à l'enregistrement de l'empreinte, puis
 # valide chaque demande d'empreinte de l'app.
