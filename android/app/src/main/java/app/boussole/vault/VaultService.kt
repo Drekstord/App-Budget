@@ -356,11 +356,14 @@ class VaultService(
         open(key.copyOf(), data)
     }
 
-    private suspend fun open(key: ByteArray, data: VaultData) {
+    private fun open(key: ByteArray, data: VaultData) {
         dek?.fill(0)
         dek = key
         _state.value = VaultState.Unlocked(data, hardware.level())
-        afterOpen()
+        // La suite tourne dans la portée du coffre, pas dans celle de l'écran qui a
+        // demandé l'ouverture : cet écran disparaît aussitôt (coffre ouvert) et
+        // annulerait sinon le travail en cours (clé de la boîte de réception perdue).
+        scope.launch { mutex.withLock { afterOpen() } }
     }
 
     private fun markInvalidated() {
