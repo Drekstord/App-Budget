@@ -18,6 +18,12 @@ object Inbox {
     private val random = SecureRandom()
     private val INFO = "boussole/inbox/v1".encodeToByteArray()
 
+    init {
+        // Tables de calcul initialisées une fois, avant tout usage concurrent
+        // (service de capture et coffre peuvent chiffrer et déchiffrer en même temps).
+        X25519.precompute()
+    }
+
     class KeyPair(val privateKey: ByteArray, val publicKey: ByteArray)
 
     fun newKeyPair(): KeyPair {

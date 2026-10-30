@@ -11,6 +11,7 @@ import android.util.Log
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.BySelector
+import androidx.test.uiautomator.StaleObjectException
 import androidx.test.uiautomator.Direction
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiObject2
@@ -85,10 +86,33 @@ class Driver {
         tag(tag).text = value
     }
 
-    /** Clique dès que l'élément est activé (les boutons le deviennent après la saisie). */
+    /**
+     * Clique dès que l'élément est activé (les boutons le deviennent après la
+     * saisie) ; recommence si l'écran s'est recomposé entre-temps.
+     */
     fun click(tag: String, timeout: Long = DEFAULT_TIMEOUT) {
         tag(tag, timeout)
-        find(By.res(tag).enabled(true), "bouton activé « $tag »", timeout).click()
+        repeat(5) { attempt ->
+            try {
+                find(By.res(tag).enabled(true), "bouton activé « $tag »", timeout).click()
+                return
+            } catch (e: StaleObjectException) {
+                if (attempt == 4) throw e
+                Thread.sleep(300)
+            }
+        }
+    }
+
+    /** Texte d'un élément, en attendant qu'il soit affiché (pendant une recomposition, il peut manquer). */
+    fun textOf(tag: String, timeout: Long = DEFAULT_TIMEOUT): String {
+        val deadline = System.currentTimeMillis() + timeout
+        while (System.currentTimeMillis() < deadline) {
+            val text = runCatching { tag(tag, timeout).text }.getOrNull()
+            if (!text.isNullOrEmpty()) return text
+            Thread.sleep(250)
+        }
+        fail("Texte vide pour « $tag »\n${screen()}")
+        error("inaccessible")
     }
 
     fun expectText(text: String, timeout: Long = DEFAULT_TIMEOUT) =

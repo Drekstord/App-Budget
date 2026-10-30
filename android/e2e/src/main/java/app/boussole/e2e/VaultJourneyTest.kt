@@ -39,7 +39,7 @@ class VaultJourneyTest {
 
         // 2. Phrase de récupération : 24 mots lus à l'écran, copie et fichier.
         val words = (0 until 24).map { i ->
-            val text = ui.tag("phrase_word_$i").text
+            val text = ui.textOf("phrase_word_$i")
             text.substringAfter(". ").also { assert(it.isNotBlank()) { "Mot $i vide : « $text »" } }
         }
         assertEquals(24, words.size)
@@ -90,8 +90,8 @@ class VaultJourneyTest {
         // 6. Une dépense captée par notification, classée par mot-clé, validée.
         ui.postNotification(1, "Paiement par carte", "Vous avez payé 12,50 € chez CARREFOUR CITY le 29/10.")
         ui.click("home_validate", timeout = 30_000)
-        assertEquals("CARREFOUR CITY", ui.tag("pending_0_label").text)
-        assertTrue(ui.tag("pending_0_category").text.contains("Courses"))
+        assertEquals("CARREFOUR CITY", ui.textOf("pending_0_label"))
+        assertTrue(ui.textOf("pending_0_category").contains("Courses"))
         ui.click("pending_0_validate")
         ui.expectText("Tout est à jour")
         ui.click("nav_back")
@@ -105,7 +105,7 @@ class VaultJourneyTest {
         ui.click("nav_back")
         ui.postNotification(3, "Paiement par carte", "Vous avez payé 6,40 € chez CARREFOUR CITY.")
         ui.click("home_validate", timeout = 30_000)
-        assertTrue("La correction n'a pas été apprise\n${ui.screen()}", ui.tag("pending_0_category").text.contains("Restaurants"))
+        assertTrue("La correction n'a pas été apprise\n${ui.screen()}", ui.textOf("pending_0_category").contains("Restaurants"))
         ui.click("pending_0_validate")
         ui.click("nav_back")
 
@@ -136,7 +136,7 @@ class VaultJourneyTest {
         ui.click("unlock_submit")
         ui.awaitAfterFingerprint("home_validate")
         ui.click("home_validate")
-        assertEquals("BOULANGERIE MARIE", ui.tag("pending_0_label").text)
+        assertEquals("BOULANGERIE MARIE", ui.textOf("pending_0_label"))
         ui.click("pending_0_validate")
         ui.click("nav_back")
 
