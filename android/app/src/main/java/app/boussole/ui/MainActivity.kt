@@ -55,7 +55,7 @@ private fun BoussoleRoot(vault: VaultService, activity: FragmentActivity) {
     when (val current = state) {
         VaultState.Empty -> WelcomeFlow(vault, activity)
         is VaultState.Locked -> LockedFlow(current, vault, activity)
-        is VaultState.Unlocked -> HomeScreen(current, vault, activity)
+        is VaultState.Unlocked -> Shell(current, vault, activity)
     }
 }
 

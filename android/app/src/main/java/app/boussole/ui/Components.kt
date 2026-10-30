@@ -202,3 +202,13 @@ fun LabeledRow(label: String, value: String) {
 
 /** Repère de test facultatif (aucun si [tag] est vide). */
 fun Modifier.tagged(tag: String): Modifier = if (tag.isEmpty()) this else testTag(tag)
+
+/**
+ * Une boîte de dialogue est une fenêtre à part : elle doit exposer elle-même ses
+ * repères de test pour les tests de bout en bout.
+ */
+@OptIn(ExperimentalComposeUiApi::class)
+fun Modifier.exposeTags(): Modifier = semantics { testTagsAsResourceId = true }
+
+/** Repère de test d'un élément situé dans une boîte de dialogue. */
+fun Modifier.dialogTag(tag: String): Modifier = if (tag.isEmpty()) this else exposeTags().testTag(tag)

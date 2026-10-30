@@ -8,6 +8,9 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
 
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <!-- Rappels locaux (NOT) et leur reprogrammation après un redémarrage. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:name=".BoussoleApp"
@@ -44,6 +47,28 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/backup_paths" />
         </provider>
+
+        <!-- Lecture des notifications bancaires (CAP-2) : seul le système peut s'y lier. -->
+        <service
+            android:name=".capture.CaptureService"
+            android:exported="true"
+            android:label="@string/capture_service_label"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
+        <receiver
+            android:name=".reminders.ReminderReceiver"
+            android:exported="false" />
+        <receiver
+            android:name=".reminders.BootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
         <!-- Surface d'attaque minimale : récepteur exporté inutile pour nous. -->
         <receiver

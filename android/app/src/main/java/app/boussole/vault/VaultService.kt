@@ -2,32 +2,40 @@ package app.boussole.vault
 
 import android.content.Context
 import androidx.core.util.AtomicFile
+import app.boussole.capture.CaptureStore
 import app.boussole.core.backup.BackupCodec
-import app.boussole.core.backup.InvalidBackup
 import app.boussole.core.backup.RestoredBackup
+import app.boussole.core.capture.CapturedItem
+import app.boussole.core.capture.Captures
+import app.boussole.core.capture.Inbox
+import app.boussole.core.capture.ReminderMirror
 import app.boussole.core.crypto.Aead
 import app.boussole.core.crypto.Argon2Params
 import app.boussole.core.crypto.Argon2id
 import app.boussole.core.crypto.RecoveryPhrase
 import app.boussole.core.crypto.encodeSecret
-import app.boussole.core.domain.Account
-import app.boussole.core.domain.AccountKind
+import app.boussole.core.domain.Defaults
+import app.boussole.core.domain.TransactionStatus
 import app.boussole.core.domain.VaultData
 import app.boussole.core.vault.AttemptThrottle
 import app.boussole.core.vault.VaultCodec
 import app.boussole.core.vault.VaultHeader
 import app.boussole.security.HardwareKey
 import app.boussole.security.HardwareKeyInvalidated
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.util.UUID
 import javax.crypto.AEADBadTagException
 import javax.crypto.Cipher
@@ -59,9 +67,10 @@ sealed interface UnlockResult {
  *
  * Fichiers (dans `noBackupFilesDir`, exclus de toute sauvegarde système) :
  * `header.json` (en-tête, cf. [VaultHeader]) et `data.bin` (données scellées).
- * La DEK n'existe en mémoire que pendant qu'il est ouvert.
+ * La DEK n'existe en mémoire que pendant qu'il est ouvert. À chaque ouverture,
+ * les captures de la boîte de réception sont relues et intégrées.
  */
-class VaultService(context: Context) {
+class VaultService(context: Context, private val captures: CaptureStore) {
     private val dir = File(context.noBackupFilesDir, "vault").apply { mkdirs() }
     private val exportsDir = File(context.cacheDir, "exports")
     private val headerFile = AtomicFile(File(dir, "header.json"))
@@ -69,6 +78,8 @@ class VaultService(context: Context) {
     private val attemptsFile = File(dir, "attempts")
     private val hardware = HardwareKey()
     private val mutex = Mutex()
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val zone: ZoneId get() = ZoneId.systemDefault()
 
     private var header: VaultHeader? = readHeaderOrNull()
     private var dek: ByteArray? = null
@@ -76,8 +87,16 @@ class VaultService(context: Context) {
     private val _state = MutableStateFlow(lockedOrEmpty())
     val state: StateFlow<VaultState> = _state.asStateFlow()
 
+    /** Message ponctuel à afficher (captures intégrées, import…). */
+    private val _notice = MutableStateFlow<String?>(null)
+    val notice: StateFlow<String?> = _notice.asStateFlow()
+
+    fun consumeNotice() {
+        _notice.value = null
+    }
+
     init {
-        // Une sauvegarde exportée n'a pas à traîner dans le cache.
+        // Une sauvegarde ou une phrase exportée n'a pas à traîner dans le cache.
         exportsDir.deleteRecursively()
     }
 
@@ -92,7 +111,7 @@ class VaultService(context: Context) {
     suspend fun create(password: String, phrase: RecoveryPhrase, authorizedCipher: Cipher) = mutex.withLock {
         check(header == null) { "Un coffre existe déjà" }
         val newDek = Aead.newKey()
-        val data = VaultData(accounts = defaultAccounts())
+        val data = VaultData(accounts = Defaults.defaultAccounts { UUID.randomUUID().toString() }).normalized()
         val newHeader = withContext(Dispatchers.Default) {
             sealHeader(newDek, password, authorizedCipher, VaultCodec.sealDekWithRecovery(newDek, phrase))
         }
@@ -155,6 +174,8 @@ class VaultService(context: Context) {
         if (_state.value is VaultState.Unlocked) _state.value = lockedOrEmpty()
     }
 
+    val isUnlocked: Boolean get() = _state.value is VaultState.Unlocked
+
     // --- Récupération (empreintes modifiées, mot de passe oublié) -------------
 
     /** Vérifie la phrase AVANT de toucher à la clé matérielle ; null si elle n'ouvre pas ce coffre. */
@@ -172,6 +193,12 @@ class VaultService(context: Context) {
         persist(newHeader, recoveredDek, data)
     }
 
+    /** Changement de mot de passe, coffre ouvert : nouvelle enveloppe et nouvelle clé matérielle. */
+    suspend fun changePassword(newPassword: String, authorizedCipher: Cipher) {
+        val key = checkNotNull(dek) { "Coffre verrouillé" }.copyOf()
+        rekey(key, newPassword, authorizedCipher)
+    }
+
     // --- Sauvegarde -----------------------------------------------------------
 
     /** Écrit une sauvegarde chiffrée dans le cache, prête à être partagée. */
@@ -181,14 +208,21 @@ class VaultService(context: Context) {
         val bytes = withContext(Dispatchers.Default) {
             BackupCodec.encode(data, key, checkNotNull(header).recoveryEnvelope, Instant.now().toString())
         }
+        captures.update { it.copy(lastBackupAt = System.currentTimeMillis()) }
         withContext(Dispatchers.IO) {
-            exportsDir.deleteRecursively()
             exportsDir.mkdirs()
+            exportsDir.listFiles()?.filter { it.name.endsWith(".${BackupCodec.EXTENSION}") }?.forEach { it.delete() }
             File(exportsDir, "boussole-${LocalDate.now()}.${BackupCodec.EXTENSION}").apply { writeBytes(bytes) }
         }
     }
 
-    /** @throws InvalidBackup */
+    /** Fichier temporaire à partager (export CSV…), effacé au prochain démarrage. */
+    suspend fun exportText(name: String, content: String): File = withContext(Dispatchers.IO) {
+        exportsDir.mkdirs()
+        File(exportsDir, name).apply { writeText(content) }
+    }
+
+    /** @throws app.boussole.core.backup.InvalidBackup */
     fun readBackup(file: ByteArray, phrase: RecoveryPhrase): RestoredBackup = BackupCodec.decode(file, phrase)
 
     suspend fun restore(backup: RestoredBackup, newPassword: String, authorizedCipher: Cipher) = mutex.withLock {
@@ -205,11 +239,80 @@ class VaultService(context: Context) {
         val key = dek ?: return@withLock
         val current = (state.value as? VaultState.Unlocked)?.data ?: return@withLock
         val next = transform(current)
-        withContext(Dispatchers.IO) { writeAtomically(dataFile, VaultCodec.sealData(key, next)) }
-        _state.value = VaultState.Unlocked(next, hardware.level())
+        if (next == current) return@withLock
+        save(key, next)
+    }
+
+    fun data(): VaultData? = (state.value as? VaultState.Unlocked)?.data
+
+    // --- Captures -------------------------------------------------------------
+
+    /** Appelé par le service de capture : intègre tout de suite si le coffre est ouvert. */
+    fun onCaptured() {
+        if (!isUnlocked) return
+        scope.launch { mutex.withLock { drainInbox() } }
+    }
+
+    /** Notifications non comprises (mode diagnostic), déchiffrées pour être montrées. */
+    fun diagnostics(): List<CapturedItem> {
+        val key = data()?.inboxPrivateKey?.takeIf { it.isNotEmpty() } ?: return emptyList()
+        return captures.diagnostics().mapNotNull { sealed ->
+            runCatching { CapturedItem.decode(Inbox.open(key, sealed)) }.getOrNull()
+        }.sortedByDescending { it.postedAtMillis }
+    }
+
+    private suspend fun drainInbox() {
+        val key = dek ?: return
+        var data = data() ?: return
+        val privateKey = data.inboxPrivateKey
+        val items = captures.drain().mapNotNull { sealed ->
+            runCatching { CapturedItem.decode(Inbox.open(privateKey, sealed)) }.getOrNull()
+        }
+        if (items.isEmpty()) {
+            captures.acknowledgeDrain()
+            return
+        }
+        val result = Captures.merge(data, items, zone)
+        data = result.data
+        save(key, data)
+        captures.acknowledgeDrain()
+        if (result.added > 0) _notice.value = "${result.added} dépense(s) captée(s), à valider."
     }
 
     // --- Interne --------------------------------------------------------------
+
+    /** Prépare un coffre ouvert : complète les données, la clé de la boîte de réception, intègre les captures. */
+    private suspend fun afterOpen() {
+        val key = dek ?: return
+        var data = data() ?: return
+        val original = data
+        data = data.normalized()
+        if (data.inboxPrivateKey.isEmpty()) data = data.copy(inboxPrivateKey = Inbox.newKeyPair().privateKey)
+        val publicKey = Inbox.publicKeyOf(data.inboxPrivateKey)
+        // La clé publique en clair doit correspondre à la clé privée du coffre.
+        if (captures.publicKey?.contentEquals(publicKey) != true) captures.publicKey = publicKey
+        if (data != original) save(key, data)
+        drainInbox()
+        mirror(data())
+    }
+
+    private suspend fun save(key: ByteArray, data: VaultData) {
+        withContext(Dispatchers.IO) { writeAtomically(dataFile, VaultCodec.sealData(key, data)) }
+        _state.value = VaultState.Unlocked(data, hardware.level())
+        mirror(data)
+    }
+
+    /** Ce que les rappels doivent savoir coffre fermé : un compteur et des réglages. */
+    private fun mirror(data: VaultData?) {
+        data ?: return
+        val s = data.settings
+        captures.update {
+            it.copy(
+                pendingSnapshot = data.transactions.count { t -> t.status == TransactionStatus.TO_VALIDATE },
+                reminders = ReminderMirror(s.eveningReminder, s.eveningHour, s.weeklyReview, s.backupReminder, s.captureGapDays),
+            )
+        }
+    }
 
     private fun sealHeader(dek: ByteArray, password: String, authorizedCipher: Cipher, recoveryEnvelope: ByteArray): VaultHeader {
         val salt = Argon2id.newSalt()
@@ -240,10 +343,11 @@ class VaultService(context: Context) {
         open(key.copyOf(), data)
     }
 
-    private fun open(key: ByteArray, data: VaultData) {
+    private suspend fun open(key: ByteArray, data: VaultData) {
         dek?.fill(0)
         dek = key
         _state.value = VaultState.Unlocked(data, hardware.level())
+        afterOpen()
     }
 
     private fun markInvalidated() {
@@ -277,10 +381,4 @@ class VaultService(context: Context) {
             throw e
         }
     }
-
-    private fun defaultAccounts() = listOf(
-        Account(UUID.randomUUID().toString(), "Compte courant", AccountKind.CHECKING, "Boursobank"),
-        Account(UUID.randomUUID().toString(), "Compte courant", AccountKind.CHECKING, "Caisse d'Épargne"),
-        Account(UUID.randomUUID().toString(), "Épargne", AccountKind.SAVINGS, "Caisse d'Épargne"),
-    )
 }

@@ -95,4 +95,5 @@ dependencies {
     implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.biometric)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.mlkit.text.recognition)
 }

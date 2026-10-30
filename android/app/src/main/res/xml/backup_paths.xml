@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
+    <!-- Sauvegardes chiffrées, export de la phrase, export CSV (temporaires). -->
     <cache-path name="exports" path="exports/" />
+    <!-- Photo de ticket, effacée après analyse. -->
+    <cache-path name="receipts" path="receipts/" />
 </paths>
