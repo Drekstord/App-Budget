@@ -272,7 +272,11 @@ class VaultService(
         val sealedItems = captures.drain()
         val items = sealedItems.mapNotNull { sealed ->
             runCatching { CapturedItem.decode(Inbox.open(privateKey, sealed)) }
-                .onFailure { trace("coffre : capture illisible (${it.javaClass.simpleName})") }
+                .onFailure { error ->
+                    // Pile d'appels uniquement (emplacements du code), jamais de donnée.
+                    val where = error.stackTrace.take(8).joinToString(" < ") { "${it.className.substringAfterLast('.')}.${it.methodName}:${it.lineNumber}" }
+                    trace("coffre : capture illisible (${error.javaClass.simpleName}, clé ${privateKey.size} o) $where")
+                }
                 .getOrNull()
         }
         trace("coffre : ${sealedItems.size} capture(s) en attente, ${items.size} lisible(s)")
