@@ -134,7 +134,7 @@ fun ValidationPage(ctx: Ctx, data: VaultData) {
                         AmountText(t.amountCents, strong = true)
                     }
                     TextButton(onClick = { picking = t }, modifier = Modifier.testTag("pending_${index}_category")) {
-                        Text("Catégorie : " + categoryLabel(data.category(t.categoryId)))
+                        Text("Catégorie : " + categoryLabel(data.category(t.categoryId)), Modifier.testTag("pending_${index}_category_text"))
                     }
                     t.suggestionReason?.let { Muted(it) }
                     t.sourceText?.let { Muted("Texte d'origine : $it") }

@@ -91,7 +91,7 @@ class VaultJourneyTest {
         ui.postNotification(1, "Paiement par carte", "Vous avez payé 12,50 € chez CARREFOUR CITY le 29/10.")
         ui.click("home_validate", timeout = 30_000)
         assertEquals("CARREFOUR CITY", ui.textOf("pending_0_label"))
-        assertTrue(ui.textOf("pending_0_category").contains("Courses"))
+        assertTrue(ui.textOf("pending_0_category_text").contains("Courses"))
         ui.click("pending_0_validate")
         ui.expectText("Tout est à jour")
         ui.click("nav_back")
@@ -105,7 +105,7 @@ class VaultJourneyTest {
         ui.click("nav_back")
         ui.postNotification(3, "Paiement par carte", "Vous avez payé 6,40 € chez CARREFOUR CITY.")
         ui.click("home_validate", timeout = 30_000)
-        assertTrue("La correction n'a pas été apprise\n${ui.screen()}", ui.textOf("pending_0_category").contains("Restaurants"))
+        assertTrue("La correction n'a pas été apprise\n${ui.screen()}", ui.textOf("pending_0_category_text").contains("Restaurants"))
         ui.click("pending_0_validate")
         ui.click("nav_back")
 
