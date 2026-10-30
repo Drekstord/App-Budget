@@ -70,7 +70,11 @@ sealed interface UnlockResult {
  * La DEK n'existe en mémoire que pendant qu'il est ouvert. À chaque ouverture,
  * les captures de la boîte de réception sont relues et intégrées.
  */
-class VaultService(context: Context, private val captures: CaptureStore) {
+class VaultService(
+    context: Context,
+    private val captures: CaptureStore,
+    private val trace: (String) -> Unit = {},
+) {
     private val dir = File(context.noBackupFilesDir, "vault").apply { mkdirs() }
     private val exportsDir = File(context.cacheDir, "exports")
     private val headerFile = AtomicFile(File(dir, "header.json"))
@@ -265,14 +269,19 @@ class VaultService(context: Context, private val captures: CaptureStore) {
         val key = dek ?: return
         var data = data() ?: return
         val privateKey = data.inboxPrivateKey
-        val items = captures.drain().mapNotNull { sealed ->
-            runCatching { CapturedItem.decode(Inbox.open(privateKey, sealed)) }.getOrNull()
+        val sealedItems = captures.drain()
+        val items = sealedItems.mapNotNull { sealed ->
+            runCatching { CapturedItem.decode(Inbox.open(privateKey, sealed)) }
+                .onFailure { trace("coffre : capture illisible (${it.javaClass.simpleName})") }
+                .getOrNull()
         }
+        trace("coffre : ${sealedItems.size} capture(s) en attente, ${items.size} lisible(s)")
         if (items.isEmpty()) {
             captures.acknowledgeDrain()
             return
         }
         val result = Captures.merge(data, items, zone)
+        trace("coffre : ${result.added} ajoutée(s), ${result.duplicates} doublon(s), ${result.ignored} ignorée(s)")
         data = result.data
         save(key, data)
         captures.acknowledgeDrain()

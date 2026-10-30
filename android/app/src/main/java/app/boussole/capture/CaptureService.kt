@@ -18,6 +18,10 @@ import java.util.UUID
  */
 class CaptureService : NotificationListenerService() {
 
+    override fun onListenerConnected() {
+        (application as? BoussoleApp)?.traceTest("capture : service connecté")
+    }
+
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         val app = application as? BoussoleApp ?: return
         val store = app.captureStore
@@ -25,6 +29,7 @@ class CaptureService : NotificationListenerService() {
         val pkg = sbn.packageName
         if (pkg == packageName) return
         if (config.diagnostic) store.recordSeen(pkg, appLabel(sbn), System.currentTimeMillis())
+        app.traceTest("capture : notification de $pkg, source autorisée = ${pkg in config.sources}")
         if (pkg !in config.sources) return
 
         val notification = sbn.notification
@@ -35,10 +40,14 @@ class CaptureService : NotificationListenerService() {
             ?.toString().orEmpty()
         if (title.isBlank() && text.isBlank()) return
 
-        val publicKey = store.publicKey ?: return // coffre jamais ouvert : rien à faire
+        val publicKey = store.publicKey
+        app.traceTest("capture : clé publique présente = ${publicKey != null}")
+        publicKey ?: return // coffre jamais ouvert : rien à faire
         val item = CapturedItem(UUID.randomUUID().toString(), pkg, sbn.postTime, title, text)
         val sealed = Inbox.seal(publicKey, item.encode())
-        if (NotificationParser.parse(title, text) != null) {
+        val understood = NotificationParser.parse(title, text) != null
+        app.traceTest("capture : comprise = $understood")
+        if (understood) {
             store.append(sealed)
             store.update { it.copy(lastCaptureAt = System.currentTimeMillis()) }
             app.vault.onCaptured()

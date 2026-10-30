@@ -23,6 +23,7 @@ adb install -r "$TEST_APK"
 # Le test publie de fausses notifications bancaires, que l'app doit capter.
 adb shell pm grant app.boussole.e2e android.permission.POST_NOTIFICATIONS
 adb shell cmd notification allow_listener app.boussole/app.boussole.capture.CaptureService
+echo "Écouteurs de notifications autorisés : $(adb shell settings get secure enabled_notification_listeners)"
 
 # Doigt virtuel posé en continu : sert à l'enregistrement de l'empreinte, puis
 # valide chaque demande d'empreinte de l'app.
@@ -38,6 +39,10 @@ adb logcat -d > e2e-results/logcat.txt
 
 echo "::group::Écrans parcourus par le test (logcat)"
 grep "BoussoleE2E" e2e-results/logcat.txt | tail -n 60 || true
+echo "::endgroup::"
+
+echo "::group::Journal technique de l'app (versions de test)"
+grep "BoussoleTrace" e2e-results/logcat.txt | tail -n 60 || true
 echo "::endgroup::"
 
 echo "::group::Plantages de l'app (logcat)"

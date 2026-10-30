@@ -24,10 +24,10 @@ class BoussoleApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        val testBuild = resources.getBoolean(R.bool.is_test_build)
+        testBuild = resources.getBoolean(R.bool.is_test_build)
         if (testBuild) CrashReports.install(this)
         captureStore = CaptureStore(this, testBuild)
-        vault = VaultService(this, captureStore)
+        vault = VaultService(this, captureStore, ::traceTest)
         Reminders.schedule(this)
         // Verrouillage dès que l'app quitte l'écran (SEC-5), après le délai de grâce
         // choisi (0 à 60 s), ou à la fin d'une action externe lancée par l'app.
@@ -48,6 +48,16 @@ class BoussoleApp : Application() {
                 }
             },
         )
+    }
+
+    private var testBuild = false
+
+    /**
+     * Journal technique des versions de test (lu par les tests sur émulateur) :
+     * jamais de montant ni de texte de notification, et rien en version définitive.
+     */
+    fun traceTest(message: String) {
+        if (testBuild) android.util.Log.i("BoussoleTrace", message)
     }
 
     /**
