@@ -84,17 +84,24 @@ fun ProfilePage(ctx: Ctx, data: VaultData) {
             })
         }
         PrimaryButton("Enregistrer", {
+            val payCents = parseEuros(pay) ?: 0
+            val paydayValue = payday.toIntOrNull()?.coerceIn(1, 31)
+            val hasRent = rent
+            val notesValue = notes
+            val monthsValue = months.toIntOrNull()?.coerceIn(0, 12)
+            val cushionCents = parseEuros(cushion) ?: 0
+            val protectedIds = nonNegotiable
             ctx.update { d ->
                 d.copy(
                     profile = d.profile.copy(
-                        netPayCents = parseEuros(pay) ?: 0,
-                        usualPayday = payday.toIntOrNull()?.coerceIn(1, 31) ?: d.profile.usualPayday,
-                        hasRent = rent,
-                        notes = notes,
-                        emergencyMonths = months.toIntOrNull()?.coerceIn(0, 12) ?: d.profile.emergencyMonths,
-                        savingsCushionCents = parseEuros(cushion) ?: 0,
+                        netPayCents = payCents,
+                        usualPayday = paydayValue ?: d.profile.usualPayday,
+                        hasRent = hasRent,
+                        notes = notesValue,
+                        emergencyMonths = monthsValue ?: d.profile.emergencyMonths,
+                        savingsCushionCents = cushionCents,
                     ),
-                    categories = d.categories.map { it.copy(nonNegotiable = it.id in nonNegotiable) },
+                    categories = d.categories.map { it.copy(nonNegotiable = it.id in protectedIds) },
                 )
             }
             ctx.nav.back()

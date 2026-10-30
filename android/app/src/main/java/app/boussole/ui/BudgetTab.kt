@@ -164,9 +164,8 @@ fun EnvelopesPage(ctx: Ctx, data: VaultData) {
             }
         }
         PrimaryButton("Enregistrer", {
-            ctx.update { d ->
-                categories.fold(d) { acc, category -> Budget.setEnvelope(acc, category.id, parseEuros(amounts[category.id].orEmpty()) ?: 0) }
-            }
+            val chosen = categories.associate { it.id to (parseEuros(amounts[it.id].orEmpty()) ?: 0) }
+            ctx.update { d -> chosen.entries.fold(d) { acc, (id, cents) -> Budget.setEnvelope(acc, id, cents) } }
             ctx.nav.back()
         }, tag = "envelopes_save")
     }

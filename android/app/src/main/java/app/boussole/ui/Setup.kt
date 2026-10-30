@@ -64,9 +64,9 @@ private fun PayStep(ctx: Ctx, data: VaultData, next: () -> Unit, later: () -> Un
             supporting = "Sans les primes ni les aides : elles ne seront jamais comptées avant d'être reçues.")
         IntInput(day, { day = it }, "Jour habituel (31 = fin de mois)", tag = "onboarding_payday")
         StepButtons({
-            ctx.update { d ->
-                d.copy(profile = d.profile.copy(netPayCents = parseEuros(pay) ?: 0, usualPayday = day.toIntOrNull()?.coerceIn(1, 31) ?: 28))
-            }
+            val payCents = parseEuros(pay) ?: 0
+            val payday = day.toIntOrNull()?.coerceIn(1, 31) ?: 28
+            ctx.update { d -> d.copy(profile = d.profile.copy(netPayCents = payCents, usualPayday = payday)) }
             next()
         }, later)
     }
@@ -86,10 +86,12 @@ private fun BalancesStep(ctx: Ctx, data: VaultData, next: () -> Unit, later: () 
         }
         StepButtons({
             val now = Instant.now().toString()
+            val balanceInputs = balances.toMap()
+            val overdraftInputs = overdrafts.toMap()
             ctx.update { d ->
                 d.copy(accounts = d.accounts.map { a ->
-                    val balance = balances[a.id]?.let(Money::parse)
-                    val overdraft = overdrafts[a.id]?.let(::parseEuros)
+                    val balance = balanceInputs[a.id]?.let(Money::parse)
+                    val overdraft = overdraftInputs[a.id]?.let(::parseEuros)
                     a.copy(
                         openingBalanceCents = balance ?: a.openingBalanceCents,
                         openingDate = if (balance != null) ctx.today.toString() else a.openingDate,
@@ -122,10 +124,10 @@ private fun ChargesStep(ctx: Ctx, data: VaultData, next: () -> Unit, later: () -
         IntInput(day, { day = it }, "Jour du prélèvement")
         LabeledSwitch("Indispensable", essential, { essential = it }, "Sinon (loisir), l'app pourra proposer de le suspendre.")
         OutlinedButton(onClick = {
+            // Valeurs figées avant l'enregistrement (différé) : les champs sont vidés juste après.
             val cents = parseEuros(amount) ?: return@OutlinedButton
-            ctx.update { d ->
-                d.copy(fixedCharges = d.fixedCharges + FixedCharge(UUID.randomUUID().toString(), name.trim(), cents, day.toIntOrNull()?.coerceIn(1, 31) ?: 1, essential = essential))
-            }
+            val charge = FixedCharge(UUID.randomUUID().toString(), name.trim(), cents, day.toIntOrNull()?.coerceIn(1, 31) ?: 1, essential = essential)
+            ctx.update { d -> d.copy(fixedCharges = d.fixedCharges + charge) }
             name = ""
             amount = ""
             day = ""
@@ -148,10 +150,12 @@ private fun ConstraintsStep(ctx: Ctx, data: VaultData, next: () -> Unit, later: 
             })
         }
         StepButtons({
+            val notesValue = notes
+            val protectedIds = protected
             ctx.update { d ->
                 d.copy(
-                    profile = d.profile.copy(notes = notes),
-                    categories = d.categories.map { it.copy(nonNegotiable = it.id in protected) },
+                    profile = d.profile.copy(notes = notesValue),
+                    categories = d.categories.map { it.copy(nonNegotiable = it.id in protectedIds) },
                 )
             }
             next()
