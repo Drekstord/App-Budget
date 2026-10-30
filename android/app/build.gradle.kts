@@ -24,6 +24,11 @@ android {
         versionName = "0.1.0"
         resValue("string", "app_name", if (isTestBuild) "Boussole (test)" else "Boussole")
         resValue("bool", "is_test_build", isTestBuild.toString())
+        // Téléphone (arm64) et émulateur des tests (x86_64) : les bibliothèques
+        // natives de l'OCR ne sont pas embarquées pour les autres processeurs.
+        ndk {
+            abiFilters += listOf("arm64-v8a", "x86_64")
+        }
     }
 
     signingConfigs {

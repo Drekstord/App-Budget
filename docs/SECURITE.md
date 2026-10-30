@@ -165,10 +165,12 @@ F = faible, M = moyen, É = élevé.
   root) : l'attaquant voit ce que tu vois quand l'app est ouverte. Aucune app
   ne peut s'en protéger seule. On garde Android et One UI à jour, et on
   n'installe pas d'apps douteuses.
-- **Builds de test (phases 1 à 5)** : ils sont signés par une clé de debug
-  éphémère de la CI, il faut désinstaller et réinstaller à chaque version.
-  **Uniquement des données fictives** tant que la clé définitive n'est pas
-  générée par toi (phase 6, sur un PC ou via Termux sur le téléphone).
+- **Versions de test** : signées par une clé de debug éphémère de la CI (une
+  nouvelle à chaque build). Aucune version ne peut donc s'installer
+  par-dessus une autre : il faut désinstaller, ce qui efface le coffre. Données
+  réelles possibles **à condition** d'exporter une sauvegarde chiffrée avant
+  chaque mise à jour, puis de la restaurer. La clé définitive, générée et
+  gardée par l'utilisateur, viendra avec l'usage réel (GUIDE_DE_TEST.md, étape 9).
 - **Dossier sécurisé Samsung** : non utilisé au départ. Une app placée à
   l'intérieur ne voit pas les notifications des apps restées dehors. On le
   réévaluera en déplaçant aussi les apps bancaires dans le Dossier.

@@ -146,8 +146,9 @@ jobs:
           mv dist/*.apk boussole-test.apk
           SHA256=$(sha256sum boussole-test.apk | cut -d' ' -f1)
           cat > notes.md <<NOTES
-          ⚠️ **Version de test** — données fictives uniquement (clé de signature temporaire).
-          Désinstalle la version précédente avant d'installer celle-ci.
+          ⚠️ **Version de test** (clé de signature temporaire) : exporte une sauvegarde chiffrée,
+          désinstalle la version précédente, installe celle-ci, puis restaure ta sauvegarde.
+          Chaque version publiée ici a passé le parcours complet sur émulateur.
 
           - Branche : \`${GITHUB_REF_NAME}\`
           - Commit : \`${GITHUB_SHA::8}\`

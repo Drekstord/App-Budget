@@ -36,7 +36,12 @@ fun HomeTab(ctx: Ctx, state: VaultState.Unlocked) {
 
     Page {
         if (booleanResource(R.bool.is_test_build)) {
-            InfoCard("Version de test", "Données fictives uniquement : cette version n'est pas signée avec ta clé définitive.", Tone.WARNING)
+            InfoCard(
+                "Version de test",
+                "Signée avec une clé temporaire : avant chaque mise à jour, exporte une sauvegarde (Plus → Sauvegarde), " +
+                    "puis restaure-la après l'installation.",
+                Tone.WARNING,
+            )
         }
         if (pending > 0) {
             Card(Modifier.fillMaxWidth()) {

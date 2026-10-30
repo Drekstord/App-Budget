@@ -107,7 +107,7 @@ fun InfoCard(title: String, body: String, tone: Tone = Tone.NEUTRAL) {
 @Composable
 private fun TestBuildBanner() = InfoCard(
     title = "Version de test",
-    body = "Utilise uniquement des données fictives : cette version n'est pas signée avec ta clé définitive.",
+    body = "Signée avec une clé temporaire : avant chaque mise à jour, exporte une sauvegarde chiffrée, puis restaure-la après l'installation.",
     tone = Tone.WARNING,
 )
 
