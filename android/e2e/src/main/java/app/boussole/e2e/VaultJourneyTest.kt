@@ -193,11 +193,12 @@ class VaultJourneyTest {
         ui.device.pressBack()
         ui.launchApp()
 
-        // 14. Le nouveau mot de passe ouvre le coffre, sans plantage.
+        // 14. Le nouveau mot de passe ouvre le coffre, et l'on revient sur la page
+        //     où l'on était (Sauvegarde), sans plantage.
         ui.device.findObject(By.res("home_lock"))?.click()
         ui.type("secret_unlock", newPassword)
         ui.click("unlock_submit")
-        ui.awaitAfterFingerprint("home_free")
+        ui.awaitAfterFingerprint("backup_export")
         ui.expectNoCrashReport()
     }
 }
