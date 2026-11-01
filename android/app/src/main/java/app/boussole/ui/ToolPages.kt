@@ -81,7 +81,7 @@ fun CapturePage(ctx: Ctx, data: VaultData) {
         InfoCard(
             if (listening) "Lecture des notifications : active" else "Lecture des notifications : inactive",
             if (listening) "Les notifications des apps ci-dessous deviennent des dépenses à valider. Rien d'autre n'est lu."
-            else "Autorise Boussole à lire les notifications. Comme l'app n'est pas installée depuis le Play Store, Android " +
+            else "Autorise Butin à lire les notifications. Comme l'app n'est pas installée depuis le Play Store, Android " +
                 "demande d'abord : Infos de l'app → ⋮ → « Autoriser les paramètres restreints ».",
             if (listening) Tone.NEUTRAL else Tone.WARNING,
         )
@@ -163,7 +163,7 @@ fun CapturePage(ctx: Ctx, data: VaultData) {
 /** Copie marquée sensible, presse-papiers vidé au bout d'une minute. */
 fun copySensitive(ctx: Ctx, text: String) {
     val clipboard = ctx.activity.getSystemService(ClipboardManager::class.java)
-    val clip = ClipData.newPlainText("Boussole", text)
+    val clip = ClipData.newPlainText("Butin", text)
     clip.description.extras = PersistableBundle().apply { putBoolean("android.content.extra.IS_SENSITIVE", true) }
     clipboard.setPrimaryClip(clip)
     android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ runCatching { clipboard.clearPrimaryClip() } }, 60_000)
@@ -375,7 +375,7 @@ fun BackupPage(ctx: Ctx, data: VaultData) {
             onConfirm = {
                 confirmCsv = false
                 ctx.scope.launch {
-                    share(ctx.vault.exportText("boussole-operations-${ctx.today}.csv", CsvExport.transactions(data)), "text/csv", "Exporter les opérations")
+                    share(ctx.vault.exportText("butin-operations-${ctx.today}.csv", CsvExport.transactions(data)), "text/csv", "Exporter les opérations")
                 }
             },
             onDismiss = { confirmCsv = false },

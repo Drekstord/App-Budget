@@ -16,7 +16,7 @@ import java.io.File
  * fichier texte partagé (vers Proton Drive par exemple).
  */
 object PhraseExport {
-    private const val CLIP_LABEL = "Phrase de récupération Boussole"
+    private const val CLIP_LABEL = "Phrase de récupération Butin"
     private const val CLEAR_DELAY_MS = 60_000L
 
     // Constante ClipDescription.EXTRA_IS_SENSITIVE (API 33), écrite en clair pour
@@ -24,7 +24,7 @@ object PhraseExport {
     private const val EXTRA_IS_SENSITIVE = "android.content.extra.IS_SENSITIVE"
 
     fun text(words: List<String>): String = buildString {
-        appendLine("Boussole — phrase de récupération (24 mots, dans l'ordre)")
+        appendLine("Butin — phrase de récupération (24 mots, dans l'ordre)")
         appendLine("Elle ouvre toutes tes sauvegardes, sur n'importe quel téléphone. Ne la partage avec personne.")
         appendLine()
         words.forEachIndexed { i, word -> appendLine("${i + 1}. $word") }
@@ -65,5 +65,5 @@ object PhraseExport {
         file(context).delete()
     }
 
-    private fun file(context: Context) = File(File(context.cacheDir, "exports"), "boussole-phrase-de-recuperation.txt")
+    private fun file(context: Context) = File(File(context.cacheDir, "exports"), "butin-phrase-de-recuperation.txt")
 }

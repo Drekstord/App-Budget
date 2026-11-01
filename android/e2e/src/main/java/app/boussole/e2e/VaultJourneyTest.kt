@@ -23,7 +23,7 @@ private val SHARE_SHEET = Pattern.compile("com\\.android\\.intentresolver|androi
 class VaultJourneyTest {
     private val ui = Driver()
     private val password = "Guitare-Fender-2026!"
-    private val newPassword = "Nouveau-Cap-Boussole-42"
+    private val newPassword = "Nouveau-Cap-Butin-42"
 
     @Test
     fun parcoursComplet() {

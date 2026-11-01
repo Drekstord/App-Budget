@@ -22,7 +22,7 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
-        resValue("string", "app_name", if (isTestBuild) "Boussole (test)" else "Boussole")
+        resValue("string", "app_name", if (isTestBuild) "Butin (test)" else "Butin")
         resValue("bool", "is_test_build", isTestBuild.toString())
         // Téléphone (arm64) et émulateur des tests (x86_64) : les bibliothèques
         // natives de l'OCR ne sont pas embarquées pour les autres processeurs.

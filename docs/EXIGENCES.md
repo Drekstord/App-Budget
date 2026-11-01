@@ -1,8 +1,10 @@
-# Boussole — Cahier des exigences
+# Butin — Cahier des exigences
 
 > **Version 2.0 — 29 octobre 2026.** Refonte totale : remplace le document
 > d'exigences d'« Écu » (PWA, dernier commit de cette version : `fdeaeb4`).
-> « Boussole » est un nom de travail, modifiable à tout moment.
+> Nom définitif : **Butin** (choisi le 01/11/2026), dans la famille Élan et Ravito.
+> Le nom technique interne reste `app.boussole` (paquet, formats chiffrés) : le
+> changer rendrait illisibles les coffres et sauvegardes existants.
 
 ## 1. Contexte
 

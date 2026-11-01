@@ -245,7 +245,7 @@ fun BiometricStep(
                 busy = true
                 error = null
                 try {
-                    when (val result = activity.authenticate(prepare(), "Boussole", "Pose ton doigt pour sceller ton coffre")) {
+                    when (val result = activity.authenticate(prepare(), "Butin", "Pose ton doigt pour sceller ton coffre")) {
                         is BiometricResult.Success -> action(result.cipher)
                         BiometricResult.Cancelled -> Unit
                         is BiometricResult.Error -> error = result.message

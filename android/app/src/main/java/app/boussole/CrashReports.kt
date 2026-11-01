@@ -19,7 +19,7 @@ object CrashReports {
             runCatching {
                 val trace = StringWriter().also { error.printStackTrace(PrintWriter(it)) }.toString()
                 file(context).writeText(
-                    "Boussole ${BuildInfo.versionName(context)} — Android ${android.os.Build.VERSION.RELEASE}\n\n$trace",
+                    "Butin ${BuildInfo.versionName(context)} — Android ${android.os.Build.VERSION.RELEASE}\n\n$trace",
                 )
             }
             previous?.uncaughtException(thread, error)

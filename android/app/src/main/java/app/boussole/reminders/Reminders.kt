@@ -97,7 +97,7 @@ object Reminders {
         )
         val public = NotificationCompat.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Boussole")
+            .setContentTitle("Butin")
             .setContentText("Un rappel t'attend.")
             .build()
         val notification = NotificationCompat.Builder(context, CHANNEL)

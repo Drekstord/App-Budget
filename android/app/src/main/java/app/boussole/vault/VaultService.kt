@@ -216,7 +216,7 @@ class VaultService(
         withContext(Dispatchers.IO) {
             exportsDir.mkdirs()
             exportsDir.listFiles()?.filter { it.name.endsWith(".${BackupCodec.EXTENSION}") }?.forEach { it.delete() }
-            File(exportsDir, "boussole-${LocalDate.now()}.${BackupCodec.EXTENSION}").apply { writeBytes(bytes) }
+            File(exportsDir, "butin-${LocalDate.now()}.${BackupCodec.EXTENSION}").apply { writeBytes(bytes) }
         }
     }
 

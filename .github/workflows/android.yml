@@ -54,11 +54,11 @@ jobs:
           "$APKSIGNER" verify --verbose --print-certs "$APK" | tee -a "$GITHUB_STEP_SUMMARY"
           echo "SHA-256 de l'APK : $(sha256sum "$APK" | cut -d' ' -f1)" | tee -a "$GITHUB_STEP_SUMMARY"
           mkdir -p dist
-          cp "$APK" "dist/boussole-test-${GITHUB_SHA::8}.apk"
+          cp "$APK" "dist/butin-test-${GITHUB_SHA::8}.apk"
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: boussole-test-apk
+          name: butin-test-apk
           path: dist/*.apk
           retention-days: 14
           if-no-files-found: error
@@ -87,7 +87,7 @@ jobs:
 
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          name: boussole-test-apk
+          name: butin-test-apk
           path: dist
 
       - name: Activer l'accélération matérielle (KVM)
@@ -135,7 +135,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          name: boussole-test-apk
+          name: butin-test-apk
           path: dist
 
       - name: Remplacer la Release « test »
@@ -143,8 +143,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          mv dist/*.apk boussole-test.apk
-          SHA256=$(sha256sum boussole-test.apk | cut -d' ' -f1)
+          mv dist/*.apk butin-test.apk
+          SHA256=$(sha256sum butin-test.apk | cut -d' ' -f1)
           cat > notes.md <<NOTES
           ⚠️ **Version de test** (clé de signature temporaire) : exporte une sauvegarde chiffrée,
           désinstalle la version précédente, installe celle-ci, puis restaure ta sauvegarde.
@@ -155,8 +155,8 @@ jobs:
           - SHA-256 de l'APK : \`${SHA256}\`
           NOTES
           gh release delete test --yes --cleanup-tag || true
-          gh release create test boussole-test.apk \
+          gh release create test butin-test.apk \
             --target "$GITHUB_SHA" \
             --prerelease \
-            --title "Boussole — version de test (${GITHUB_SHA::8})" \
+            --title "Butin — version de test (${GITHUB_SHA::8})" \
             --notes-file notes.md

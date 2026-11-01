@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Icône de notification : aiguille de boussole, monochrome. -->
+<!-- Icône de notification : silhouette du sac de butin, monochrome. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
@@ -7,5 +7,5 @@
     android:viewportHeight="24">
     <path
         android:fillColor="#FFFFFFFF"
-        android:pathData="M12,2a10,10 0,1 1,0 20a10,10 0,1 1,0 -20zM12,4a8,8 0,1 0,0 16a8,8 0,1 0,0 -16zM12,5.5l2.5,6.5l-2.5,6.5l-2.5,-6.5z" />
+        android:pathData="M8,3 L10,5 L12,3 L14,5 L16,3 L15,7.5 L9,7.5 Z M8.5,8.5 L15.5,8.5 C20,11 20.5,21 12,21.5 C3.5,21 4,11 8.5,8.5 Z" />
 </vector>

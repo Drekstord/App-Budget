@@ -1,4 +1,4 @@
-# Boussole — Modèle de menaces et architecture de sécurité
+# Butin — Modèle de menaces et architecture de sécurité
 
 > Version 2.0 — 29 octobre 2026. Ce document fait autorité : toute
 > fonctionnalité qui le contredit doit d'abord le faire évoluer.
@@ -87,7 +87,7 @@ partiraient dans la Galerie et ses synchronisations.
 - idéalement, une copie papier en plus, au cas où le compte Proton serait perdu.
 
 > À noter : la sauvegarde Google One du téléphone **ne contient pas**
-> Boussole (`allowBackup="false"` et règles d'extraction qui excluent tout).
+> Butin (`allowBackup="false"` et règles d'extraction qui excluent tout).
 > La seule sauvegarde est le fichier chiffré exporté volontairement.
 
 ### Captures faites coffre fermé : la boîte de réception scellée

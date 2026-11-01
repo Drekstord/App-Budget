@@ -55,7 +55,7 @@ private fun UnlockScreen(state: VaultState.Locked, vault: VaultService, activity
             error = null
             try {
                 val cipher = vault.prepareUnlock() ?: return@launch
-                when (val auth = activity.authenticate(cipher, "Boussole", "Pose ton doigt pour ouvrir ton coffre")) {
+                when (val auth = activity.authenticate(cipher, "Butin", "Pose ton doigt pour ouvrir ton coffre")) {
                     is BiometricResult.Success -> {
                         error = when (val result = vault.unlock(password, auth.cipher)) {
                             UnlockResult.Success -> null

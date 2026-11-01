@@ -1,4 +1,8 @@
-# Boussole
+# Butin
+
+<img src="docs/logo/butin.png" alt="Logo Butin" width="96">
+
+> Garde ton butin. — de la même famille qu'Élan et Ravito.
 
 Application Android de budget personnel. Elle **capte tes dépenses toute
 seule**, les classe, les range dans tes enveloppes, et te **conseille** pour

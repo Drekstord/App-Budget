@@ -9,7 +9,7 @@
 
 Ouvre ce lien dans Chrome, connecté à ton compte GitHub (le dépôt est privé) :
 
-> **https://github.com/Drekstord/App-Budget/releases/download/test/boussole-test.apk**
+> **https://github.com/Drekstord/App-Budget/releases/download/test/butin-test.apk**
 
 L'APK se télécharge directement. **Garde ce lien en favori** : il pointe
 toujours vers la dernière version de test. La page

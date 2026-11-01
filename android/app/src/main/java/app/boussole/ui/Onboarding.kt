@@ -27,7 +27,7 @@ fun WelcomeFlow(vault: VaultService, activity: FragmentActivity) {
     var screen by remember { mutableStateOf(Welcome.HOME) }
     when (screen) {
         Welcome.HOME -> Screen {
-            Title("Boussole", "Ton budget, ton cap. Sur ce téléphone et nulle part ailleurs.")
+            Title("Butin", "Garde ton butin. Ton argent, sur ce téléphone et nulle part ailleurs.")
             InfoCard(
                 "Ce qui protège tes données",
                 "• L'app n'a pas accès à Internet : rien ne peut sortir.\n" +

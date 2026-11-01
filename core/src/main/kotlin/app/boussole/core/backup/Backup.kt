@@ -42,7 +42,7 @@ class RestoredBackup(val dek: ByteArray, val recoveryEnvelope: ByteArray, val da
  * récupération permet de l'ouvrir.
  */
 object BackupCodec {
-    const val EXTENSION = "boussole"
+    const val EXTENSION = "butin"
     private val MAGIC = "BSLB".encodeToByteArray()
     private const val VERSION: Byte = 1
     private const val MAX_HEADER_BYTES = 64 * 1024
@@ -91,7 +91,7 @@ object BackupCodec {
     private fun split(file: ByteArray): Parts {
         val fixed = MAGIC.size + 1 + 4
         if (file.size < fixed || !file.copyOfRange(0, MAGIC.size).contentEquals(MAGIC)) {
-            throw InvalidBackup("Ce fichier n'est pas une sauvegarde Boussole.")
+            throw InvalidBackup("Ce fichier n'est pas une sauvegarde Butin.")
         }
         val buffer = ByteBuffer.wrap(file, MAGIC.size, 5)
         val version = buffer.get()

@@ -169,7 +169,7 @@ fun Shell(state: VaultState.Unlocked, vault: VaultService, activity: FragmentAct
 }
 
 private fun title(route: Route?, tab: Tab): String = when (route) {
-    null -> if (tab == Tab.HOME) "Boussole" else tab.label
+    null -> if (tab == Tab.HOME) "Butin" else tab.label
     Route.Validation -> "À valider"
     is Route.Edit -> if (route.id == null) "Nouvelle opération" else "Opération"
     Route.Envelopes -> "Mes enveloppes"

@@ -9,7 +9,7 @@ verrouillages, récupération, sauvegarde). Ton rôle est de tester ce qu'un
 vraie vie.**
 
 > Installation et mise à jour : [INSTALLATION.md](INSTALLATION.md). Lien fixe :
-> https://github.com/Drekstord/App-Budget/releases/download/test/boussole-test.apk
+> https://github.com/Drekstord/App-Budget/releases/download/test/butin-test.apk
 
 ## Avant de commencer : données réelles ou fictives ?
 
@@ -46,7 +46,7 @@ tes banques.
 
 1. Plus → **Capture des dépenses** :
    - « 1. Infos de l'app » → ⋮ → **Autoriser les paramètres restreints** ;
-   - « 2. Autoriser l'accès aux notifications » → active Boussole.
+   - « 2. Autoriser l'accès aux notifications » → active Butin.
 2. Active le **mode diagnostic** (même écran).
 3. Dans tes apps Boursobank et Caisse d'Épargne, active les **notifications
    de paiement** si ce n'est pas déjà fait.
