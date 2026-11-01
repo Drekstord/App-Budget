@@ -17,7 +17,7 @@ Les versions de test sont signées avec une clé temporaire : **chaque nouvelle
 version oblige à désinstaller la précédente**. Tes données ne sont pas perdues
 pour autant si tu fais ceci avant chaque mise à jour :
 
-1. Plus → Sauvegarde et export → **Exporter une sauvegarde chiffrée** → Proton Drive.
+1. ⚙️ Réglages → Sauvegarde et export → **Exporter une sauvegarde chiffrée** → Proton Drive.
 2. Désinstalle, installe la nouvelle version.
 3. Au premier écran : **Restaurer une sauvegarde** → le fichier → ta phrase.
 
@@ -27,13 +27,27 @@ contraignante, jusqu'à la clé définitive (étape 9).
 
 ---
 
+## Repères : comment l'app est organisée
+
+- **3 onglets** : 🏰 **Accueil** (ce qu'il te reste, une seule chose à faire),
+  🧾 **Dépenses** (à valider, puis l'historique), 🎯 **Objectifs** (ton plan,
+  ton rythme, tes envies).
+- En haut : **?** explique l'écran (ou relance la visite guidée), **⚙️** ouvre
+  les réglages, **🔒** verrouille.
+- Une **visite guidée** s'ouvre à la première visite de chaque onglet ;
+  ⚙️ Réglages → « Revoir la visite guidée » pour la relancer.
+- Tu peux quitter Butin à tout moment (pour lire un solde dans l'app de ta
+  banque) : au retour, après déverrouillage, tu retrouves la même page et tes
+  saisies.
+
 ## Étape 1 : création et profil de vie (10 min)
 
 1. Crée le coffre : mot de passe via Proton Pass, phrase de 24 mots, empreinte.
 2. Le **profil de vie** s'ouvre ensuite :
    - ta paie nette habituelle et son jour (31 si « fin de mois ») ;
-   - le **solde actuel** de chaque compte, lu dans tes apps bancaires (avec
-     « - » s'il est négatif), et ton découvert autorisé ;
+   - tes **comptes** : ajoute ou retire ce qu'il faut (Livret A, LDDS, PEL,
+     assurance vie, PEA…), puis recopie leur **solde actuel** (« - » s'il est
+     négatif) ; « Modifier » règle le découvert autorisé ou protège une épargne ;
    - tes **charges fixes** : assurance, téléphone, abonnements… (indispensable
      ou non) ;
    - tes contraintes et ce qui n'est **pas négociable** ;
@@ -44,7 +58,7 @@ tes banques.
 
 ## Étape 2 : capture automatique (le plus important, sur 1 semaine)
 
-1. Plus → **Capture des dépenses** :
+1. ⚙️ Réglages → **Capture des dépenses** :
    - « 1. Infos de l'app » → ⋮ → **Autoriser les paramètres restreints** ;
    - « 2. Autoriser l'accès aux notifications » → active Butin.
 2. Active le **mode diagnostic** (même écran).
@@ -77,7 +91,7 @@ je ne connais pas encore les formats exacts de tes banques.
 
 1. Sur le **site** Boursobank : exporte les opérations du mois en **CSV**. Fais
    de même sur le site de la Caisse d'Épargne (CSV ou OFX).
-2. Plus → **Importer un relevé** → choisis le compte → le fichier → Importer.
+2. ⚙️ Réglages → **Importer un relevé** → choisis le compte → le fichier → Importer.
 
 ✅ **À vérifier** :
 
@@ -90,10 +104,10 @@ colonnes, sans tes opérations).
 
 ## Étape 4 : budget et enveloppes (15 min)
 
-1. Onglet **Budget** : vérifie que le mois commence **le jour où ta paie est
+1. Accueil → **Voir le détail du mois** : vérifie que le mois commence **le jour où ta paie est
    arrivée**. Pour cela, la paie doit être classée « Salaire ».
-2. Plus → Charges fixes : ajoute ce que l'app a **détecté** dans tes opérations.
-3. Budget → **Modifier mes enveloppes** → « Me proposer une répartition » :
+2. ⚙️ Réglages → Charges fixes : ajoute ce que l'app a **détecté** dans tes opérations.
+3. ⚙️ Réglages → **Mes enveloppes** → « Me proposer une répartition » :
    ajuste les montants à ta réalité.
 4. Fais déborder une enveloppe exprès, puis **Couvrir** depuis une autre.
 
@@ -102,7 +116,7 @@ juste ? Est-ce ce que tu peux vraiment dépenser ?
 
 ## Étape 5 : conseils et objectif (15 min)
 
-1. Onglet **Conseils** : lis la situation, la marche à suivre et les leviers.
+1. Onglet **Objectifs** : lis la situation, la marche à suivre et les leviers.
 2. Compare les rythmes **tranquille / équilibré / rapide** : effort par mois,
    date de sortie du découvert.
 3. **+ Nouvel objectif** : la guitare (montant, échéance si tu en as une).
@@ -117,13 +131,13 @@ juste ? Est-ce ce que tu peux vraiment dépenser ?
 
 ## Étape 6 : ticket de caisse (5 min)
 
-Plus → Scanner un ticket → photo d'un ticket de supermarché.
+⚙️ Réglages → Scanner un ticket → photo d'un ticket de supermarché.
 
 ✅ **À vérifier** : le montant total, l'enseigne et la date sont-ils trouvés ?
 
 ## Étape 7 : rappels et vie quotidienne (1 semaine)
 
-- 20 h : « N dépenses à valider » (si besoin). L'heure se règle dans Plus → Rappels.
+- 20 h : « N dépenses à valider » (si besoin). L'heure se règle dans ⚙️ Réglages → Rappels.
 - Dimanche : bilan de la semaine et rappel de sauvegarde.
 - Aucune capture pendant 4 jours → alerte.
 
@@ -132,10 +146,10 @@ verrouillé. Ne sont-ils pas trop envahissants ?
 
 ## Étape 8 : sécurité (5 min)
 
-- Plus → Sécurité : « Puce sécurisée StrongBox », état du téléphone.
+- ⚙️ Réglages → Sécurité : « Puce sécurisée StrongBox », état du téléphone.
 - Quitte l'app (bouton Accueil) puis reviens : elle doit être verrouillée.
 - Capture d'écran dans l'app : elle doit être bloquée.
-- Changer le mot de passe : Plus → Sécurité.
+- Changer le mot de passe : ⚙️ Réglages → Sécurité.
 
 ---
 

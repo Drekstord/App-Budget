@@ -3,7 +3,7 @@
 > ⚠️ Les versions de test sont signées avec une clé temporaire de la CI :
 > chaque nouvelle version demande de désinstaller la précédente, ce qui efface
 > son contenu. **Avant de désinstaller, exporte une sauvegarde chiffrée**
-> (Plus → Sauvegarde et export), puis restaure-la au premier lancement.
+> (⚙️ Réglages → Sauvegarde et export), puis restaure-la au premier lancement.
 
 ## 1. Récupérer l'APK (depuis le téléphone)
 
