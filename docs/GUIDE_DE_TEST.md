@@ -58,7 +58,7 @@ tes banques.
 
 ## Étape 2 : capture automatique (le plus important, sur 1 semaine)
 
-1. ⚙️ Réglages → **Capture des dépenses** :
+1. ⚙️ Réglages → **Capture automatique** :
    - « 1. Infos de l'app » → ⋮ → **Autoriser les paramètres restreints** ;
    - « 2. Autoriser l'accès aux notifications » → active Butin.
 2. Active le **mode diagnostic** (même écran).
@@ -131,7 +131,7 @@ juste ? Est-ce ce que tu peux vraiment dépenser ?
 
 ## Étape 6 : ticket de caisse (5 min)
 
-⚙️ Réglages → Scanner un ticket → photo d'un ticket de supermarché.
+Onglet Dépenses → Scanner un ticket → photo d'un ticket de supermarché.
 
 ✅ **À vérifier** : le montant total, l'enseigne et la date sont-ils trouvés ?
 
