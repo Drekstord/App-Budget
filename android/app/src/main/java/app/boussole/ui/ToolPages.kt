@@ -208,18 +208,22 @@ fun ImportPage(ctx: Ctx, data: VaultData) {
     var accountId by remember { mutableStateOf(checking.firstOrNull()?.id) }
     var lines by remember { mutableStateOf<List<StatementLine>?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
+    var failed by remember { mutableStateOf(false) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
         try {
             val bytes = ctx.activity.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: throw ImportError("Fichier illisible.")
             lines = StatementImport.parse(bytes)
             message = null
+            failed = false
         } catch (e: ImportError) {
             lines = null
             message = e.message
+            failed = true
         } catch (e: Exception) {
             lines = null
             message = "Lecture impossible : ${e.message ?: e.javaClass.simpleName}"
+            failed = true
         }
     }
     Page {
@@ -233,7 +237,13 @@ fun ImportPage(ctx: Ctx, data: VaultData) {
             ctx.app.beginExternalAction()
             picker.launch(arrayOf("*/*"))
         }, tag = "import_pick")
-        message?.let { InfoCard("Import", it, Tone.WARNING) }
+        message?.let { text ->
+            InfoCard("Import", text, if (failed) Tone.WARNING else Tone.NEUTRAL)
+            if (failed) {
+                Muted("Copie ce message et envoie-le moi (masque ce que tu veux) : j'ajouterai ce format.")
+                OutlinedButton(onClick = { copySensitive(ctx, text) }, modifier = Modifier.fillMaxWidth().testTag("import_copy")) { Text("Copier le message") }
+            }
+        }
         lines?.let { found ->
             InfoCard(
                 "${found.size} opération(s) trouvée(s)",
@@ -250,6 +260,7 @@ fun ImportPage(ctx: Ctx, data: VaultData) {
                     }
                     lines = null
                     message = summary
+                    failed = false
                 }
             }, enabled = accountId != null, tag = "import_apply")
         }

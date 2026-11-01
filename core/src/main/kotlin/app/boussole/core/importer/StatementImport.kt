@@ -28,6 +28,7 @@ class ImportError(message: String) : Exception(message)
  */
 object StatementImport {
     fun parse(bytes: ByteArray): List<StatementLine> {
+        rejectBinary(bytes)
         val text = decode(bytes)
         val lines = if (text.contains("<OFX>", ignoreCase = true) || text.contains("OFXHEADER")) {
             OfxStatement.parse(text)
@@ -38,8 +39,22 @@ object StatementImport {
         return lines
     }
 
-    /** UTF-8 si le fichier en est, sinon Windows-1252 (exports bancaires anciens). */
+    /** Les erreurs de fichier les plus courantes : un Excel ou un PDF à la place du CSV. */
+    private fun rejectBinary(bytes: ByteArray) {
+        fun startsWith(vararg magic: Int) = bytes.size >= magic.size && magic.indices.all { bytes[it] == magic[it].toByte() }
+        when {
+            startsWith(0x50, 0x4B, 0x03, 0x04) ->
+                throw ImportError("Ce fichier est un classeur Excel (.xlsx) ou une archive. Sur le site de ta banque, choisis l'export au format CSV (ou OFX).")
+            startsWith(0xD0, 0xCF, 0x11, 0xE0) ->
+                throw ImportError("Ce fichier est un classeur Excel (.xls). Sur le site de ta banque, choisis l'export au format CSV (ou OFX).")
+            startsWith(0x25, 0x50, 0x44, 0x46) ->
+                throw ImportError("Ce fichier est un relevé PDF : il ne contient pas les opérations sous forme lisible. Choisis l'export au format CSV (ou OFX).")
+        }
+    }
+
+    /** UTF-8 si le fichier en est, UTF-16 s'il en porte la marque, sinon Windows-1252 (exports bancaires anciens). */
     fun decode(bytes: ByteArray): String {
+        utf16(bytes)?.let { return it }
         val withoutBom = if (bytes.size >= 3 && bytes[0] == 0xEF.toByte() && bytes[1] == 0xBB.toByte() && bytes[2] == 0xBF.toByte()) {
             bytes.copyOfRange(3, bytes.size)
         } else bytes
@@ -51,6 +66,24 @@ object StatementImport {
                 .toString()
         } catch (_: CharacterCodingException) {
             String(withoutBom, Charset.forName("windows-1252"))
+        }
+    }
+
+    /** Fichiers « Unicode » d'Excel : UTF-16 avec marque, ou sans marque mais un octet nul sur deux. */
+    private fun utf16(bytes: ByteArray): String? {
+        if (bytes.size < 2) return null
+        val b0 = bytes[0].toInt() and 0xFF
+        val b1 = bytes[1].toInt() and 0xFF
+        if (b0 == 0xFF && b1 == 0xFE) return String(bytes, 2, bytes.size - 2, Charsets.UTF_16LE)
+        if (b0 == 0xFE && b1 == 0xFF) return String(bytes, 2, bytes.size - 2, Charsets.UTF_16BE)
+        val sample = bytes.take(400)
+        val evenZeros = sample.filterIndexed { i, b -> i % 2 == 0 && b == 0.toByte() }.size
+        val oddZeros = sample.filterIndexed { i, b -> i % 2 == 1 && b == 0.toByte() }.size
+        val half = sample.size / 2
+        return when {
+            oddZeros > half * 0.6 && evenZeros == 0 -> String(bytes, Charsets.UTF_16LE)
+            evenZeros > half * 0.6 && oddZeros == 0 -> String(bytes, Charsets.UTF_16BE)
+            else -> null
         }
     }
 
@@ -111,15 +144,18 @@ object CsvStatement {
     private class Columns(val date: Int, val label: Int, val amount: Int?, val debit: Int?, val credit: Int?)
 
     fun parse(text: String): List<StatementLine> {
-        val rawLines = text.lines().filter { it.isNotBlank() }
-        val headerIndex = rawLines.take(20).indexOfFirst { columnsOf(split(it, delimiterOf(it))) != null }
-        if (headerIndex < 0) throw ImportError("Colonnes non reconnues : il faut au moins une date, un libellé et un montant.")
-        val delimiter = delimiterOf(rawLines[headerIndex])
-        val columns = columnsOf(split(rawLines[headerIndex], delimiter))!!
+        val records = records(text).filter { cells -> cells.any { it.isNotBlank() } }
+        if (records.isEmpty()) throw ImportError("Le fichier est vide.")
+        val headerIndex = records.take(20).indexOfFirst { columnsOf(it) != null }
+        val (columns, body) = if (headerIndex >= 0) {
+            columnsOf(records[headerIndex])!! to records.drop(headerIndex + 1)
+        } else {
+            val inferred = inferColumns(records) ?: throw ImportError(unrecognized(records))
+            inferred to records
+        }
 
         val occurrences = mutableMapOf<String, Int>()
-        return rawLines.drop(headerIndex + 1).mapNotNull { line ->
-            val cells = split(line, delimiter)
+        return body.mapNotNull { cells ->
             val date = cells.getOrNull(columns.date)?.let(StatementImport::parseDate) ?: return@mapNotNull null
             val label = cells.getOrNull(columns.label)?.trim()?.replace(Regex("\\s+"), " ").orEmpty()
             val amount = when {
@@ -141,42 +177,100 @@ object CsvStatement {
         }
     }
 
+    /** Message d'échec qui montre les noms de colonnes lus, pour que je puisse ajouter le format. */
+    private fun unrecognized(records: List<List<String>>): String {
+        val first = records.first().joinToString(" | ") { it.take(30) }.take(300)
+        return "Colonnes non reconnues : il faut au moins une date, un libellé et un montant.\n" +
+            "Première ligne lue (${records.first().size} colonnes) : « $first »"
+    }
+
+    private val DATE_HEADERS = setOf(
+        "dateop", "date op", "date operation", "date de l operation", "date d operation", "date comptable",
+        "date comptabilisation", "date de comptabilisation", "booking date", "transaction date",
+    )
+
     private fun columnsOf(cells: List<String>): Columns? {
         val headers = cells.map(StatementImport::normalizeHeader)
         fun find(predicate: (String) -> Boolean) = headers.indexOfFirst(predicate).takeIf { it >= 0 }
-        val date = find { it == "dateop" || it == "date operation" || it == "date de l operation" || it == "date comptable" }
+        val date = find { it in DATE_HEADERS }
             ?: find { it.startsWith("date") && "val" !in it }
+            ?: find { it.startsWith("date") }
             ?: return null
-        val label = find { it == "label" || it.startsWith("libelle") || it == "description" || it == "intitule" || it.startsWith("nature") }
+        val label = find { it == "label" || it == "libelle" || it == "libelle operation" || it == "libelle de l operation" }
+            ?: find {
+                it.startsWith("libelle") || it.startsWith("label") || it == "description" || it.startsWith("intitule") ||
+                    it.startsWith("nature") || it.startsWith("detail") || it == "operation" || it == "operations" ||
+                    it == "beneficiaire" || it == "wording"
+            }
             ?: return null
-        val amount = find { it == "amount" || it.startsWith("montant") }
+        val amount = find { it == "amount" || it == "montant" || it.startsWith("montant") || it.startsWith("amount") || it == "somme" }
         val debit = find { it.startsWith("debit") }
         val credit = find { it.startsWith("credit") }
         if (amount == null && debit == null && credit == null) return null
+        if (label == date || label == amount) return null
         return Columns(date, label, amount, debit, credit)
     }
 
-    private fun delimiterOf(line: String): Char =
-        listOf(';', '\t', ',').maxBy { d -> line.count { it == d } }
+    /**
+     * Sans en-tête reconnu, devine les colonnes d'après leur contenu : une colonne
+     * de dates, une de montants (avec décimales) et la plus « textuelle » pour le libellé.
+     */
+    private fun inferColumns(records: List<List<String>>): Columns? {
+        val sample = records.drop(1).take(30).ifEmpty { return null }
+        val width = sample.maxOf { it.size }
+        if (width < 3) return null
+        fun share(column: Int, test: (String) -> Boolean): Double {
+            val values = sample.mapNotNull { it.getOrNull(column)?.trim()?.takeIf(String::isNotEmpty) }
+            if (values.size < sample.size / 2.0) return 0.0
+            return values.count(test).toDouble() / values.size
+        }
+        val amountLike = Regex("^[\"+\\-−]?[\\d\\s\u00A0\u202F.]*\\d[.,]\\d{1,2}\\s*(€|EUR)?\"?$")
+        val columns = 0 until width
+        val date = columns.firstOrNull { share(it) { v -> StatementImport.parseDate(v) != null } >= 0.8 } ?: return null
+        val amount = columns.firstOrNull { it != date && share(it) { v -> amountLike.matches(v.trim()) } >= 0.8 } ?: return null
+        val label = columns.filter { it != date && it != amount }
+            .maxByOrNull { c -> sample.sumOf { row -> row.getOrNull(c)?.count(Char::isLetter) ?: 0 } }
+            ?.takeIf { c -> sample.sumOf { row -> row.getOrNull(c)?.count(Char::isLetter) ?: 0 } > 0 }
+            ?: return null
+        return Columns(date, label, amount, null, null)
+    }
 
-    /** Découpe une ligne CSV en respectant les guillemets (« "" » = guillemet littéral). */
-    fun split(line: String, delimiter: Char): List<String> {
-        val cells = mutableListOf<String>()
+    private fun delimiterOf(text: String): Char {
+        val firstLines = text.lineSequence().filter { it.isNotBlank() }.take(5).toList()
+        return listOf(';', '\t', ',', '|').maxBy { d -> firstLines.sumOf { line -> line.count { it == d } } }
+    }
+
+    /** Découpe tout le fichier en enregistrements, y compris un libellé entre guillemets sur plusieurs lignes. */
+    fun records(text: String): List<List<String>> {
+        val delimiter = delimiterOf(text.removePrefix("sep=;").removePrefix("sep=,"))
+        val records = mutableListOf<List<String>>()
+        var cells = mutableListOf<String>()
         val current = StringBuilder()
         var quoted = false
         var i = 0
-        while (i < line.length) {
-            val c = line[i]
+        fun endCell() { cells += current.toString().trim(); current.clear() }
+        fun endRecord() { endCell(); records += cells; cells = mutableListOf() }
+        while (i < text.length) {
+            val c = text[i]
             when {
-                c == '"' && quoted && i + 1 < line.length && line[i + 1] == '"' -> { current.append('"'); i++ }
+                c == '"' && quoted && i + 1 < text.length && text[i + 1] == '"' -> { current.append('"'); i++ }
                 c == '"' -> quoted = !quoted
-                c == delimiter && !quoted -> { cells += current.toString(); current.clear() }
+                quoted && (c == '\n' || c == '\r') -> {
+                    current.append(' ')
+                    if (c == '\r' && i + 1 < text.length && text[i + 1] == '\n') i++
+                }
+                c == delimiter -> endCell()
+                c == '\r' || c == '\n' -> {
+                    if (c == '\r' && i + 1 < text.length && text[i + 1] == '\n') i++
+                    endRecord()
+                }
+                c == '\u0000' -> {}
                 else -> current.append(c)
             }
             i++
         }
-        cells += current.toString()
-        return cells.map { it.trim() }
+        if (current.isNotEmpty() || cells.isNotEmpty()) endRecord()
+        return records.filterNot { it.size == 1 && it[0].startsWith("sep=") }
     }
 }
 

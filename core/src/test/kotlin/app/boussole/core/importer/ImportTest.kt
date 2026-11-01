@@ -8,6 +8,7 @@ import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class StatementImportTest {
     @Test
@@ -61,8 +62,49 @@ class StatementImportTest {
     }
 
     @Test
-    fun `fichier non reconnu`() {
-        assertFailsWith<ImportError> { StatementImport.parse("bonjour;monde\n1;2".encodeToByteArray()) }
+    fun `fichier non reconnu - le message montre la première ligne`() {
+        val error = assertFailsWith<ImportError> { StatementImport.parse("bonjour;monde\n1;2".encodeToByteArray()) }
+        assertTrue("bonjour | monde" in error.message!!)
+    }
+
+    @Test
+    fun `CSV Unicode d'Excel (UTF-16 avec marque) et en-têtes entre guillemets`() {
+        val csv = "\"dateOp\";\"dateVal\";\"label\";\"amount\"\r\n\"2026-10-29\";\"2026-10-29\";\"CARTE CAFÉ\";\"-3,20\"\r\n"
+        val bytes = byteArrayOf(0xFF.toByte(), 0xFE.toByte()) + csv.toByteArray(Charsets.UTF_16LE)
+        val lines = StatementImport.parse(bytes)
+        assertEquals(listOf(-320L), lines.map { it.amountCents })
+        assertEquals("CARTE CAFÉ", lines[0].label)
+    }
+
+    @Test
+    fun `libellé entre guillemets sur plusieurs lignes`() {
+        val csv = "dateOp;label;amount\n2026-10-29;\"VIR SEPA\nLOYER\";-500,00\n2026-10-30;\"CB BOULANGERIE\";-2,10\n"
+        val lines = StatementImport.parse(csv.encodeToByteArray())
+        assertEquals(listOf("VIR SEPA LOYER", "CB BOULANGERIE"), lines.map { it.label })
+    }
+
+    @Test
+    fun `en-têtes inconnus - colonnes devinées d'après le contenu`() {
+        val csv = "Jour;Compte;Opération faite;Valeur;Solde\n" +
+            "29/10/2026;00012345;CARTE CARREFOUR;-12,50;-412,30\n" +
+            "30/10/2026;00012345;VIR SALAIRE ACME;1 800,00;1387,70\n"
+        val lines = StatementImport.parse(csv.encodeToByteArray())
+        assertEquals(listOf(-1250L, 180000L), lines.map { it.amountCents })
+        assertEquals("CARTE CARREFOUR", lines[0].label)
+    }
+
+    @Test
+    fun `sans en-tête du tout`() {
+        val csv = "29/10/2026;CARTE CARREFOUR;-12,50\n30/10/2026;VIR SALAIRE ACME;1800,00\n"
+        assertEquals(listOf(-1250L, 180000L), StatementImport.parse(csv.encodeToByteArray()).map { it.amountCents })
+    }
+
+    @Test
+    fun `classeur Excel et PDF refusés avec une explication`() {
+        val xlsx = byteArrayOf(0x50, 0x4B, 0x03, 0x04, 0x14, 0x00)
+        assertTrue("Excel" in assertFailsWith<ImportError> { StatementImport.parse(xlsx) }.message!!)
+        val pdf = "%PDF-1.7\n".encodeToByteArray()
+        assertTrue("PDF" in assertFailsWith<ImportError> { StatementImport.parse(pdf) }.message!!)
     }
 }
 
