@@ -1,5 +1,14 @@
 package app.boussole.ui
 
+import app.boussole.core.domain.AccountProduct
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Card
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -31,25 +40,37 @@ import app.boussole.core.domain.VaultData
 import java.time.Instant
 import java.util.UUID
 
+/** Réglages, rangés par thème (accessibles par l'icône en haut à droite). */
 @Composable
-fun MoreTab(ctx: Ctx) {
+fun SettingsHub(ctx: Ctx) {
     Page {
         SectionTitle("Ma situation")
+        NavRow("Comptes et soldes", "Courant, Livret A, PEL, assurance vie…", tag = "more_accounts") { ctx.nav.open(Route.Accounts) }
         NavRow("Profil de vie", "Paie, contraintes, ce qui n'est pas négociable", tag = "more_profile") { ctx.nav.open(Route.Profile) }
-        NavRow("Comptes et soldes", "Soldes actuels, découvert autorisé, épargne protégée", tag = "more_accounts") { ctx.nav.open(Route.Accounts) }
         NavRow("Charges fixes et abonnements", "Prélèvements prévus, détection automatique") { ctx.nav.open(Route.FixedCharges) }
+        NavRow("Mes enveloppes") { ctx.nav.open(Route.Envelopes) }
         NavRow("Bilan de la semaine") { ctx.nav.open(Route.Review) }
-        SectionTitle("Classement")
+        SectionTitle("Dépenses")
+        NavRow("Capture automatique", "Notifications de ta banque, diagnostic", tag = "more_capture") { ctx.nav.open(Route.Capture) }
+        NavRow("Importer un relevé", "CSV ou OFX") { ctx.nav.open(Route.Import) }
         NavRow("Catégories") { ctx.nav.open(Route.Categories) }
         NavRow("Règles de classement", "Ce que l'app a appris de tes corrections") { ctx.nav.open(Route.Rules) }
-        SectionTitle("Capture")
-        NavRow("Capture des dépenses", "Lecture des notifications bancaires, diagnostic", tag = "more_capture") { ctx.nav.open(Route.Capture) }
-        NavRow("Importer un relevé", "CSV ou OFX de Boursobank, Caisse d'Épargne") { ctx.nav.open(Route.Import) }
-        NavRow("Scanner un ticket") { ctx.nav.open(Route.Receipt) }
         NavRow("Rappels", "Le soir, le dimanche, sauvegardes") { ctx.nav.open(Route.Reminders) }
         SectionTitle("Protection")
         NavRow("Sauvegarde et export", tag = "more_backup") { ctx.nav.open(Route.Backup) }
         NavRow("Sécurité", "Mot de passe, verrouillage, état du téléphone", tag = "more_security") { ctx.nav.open(Route.Security) }
+        SectionTitle("Aide")
+        NavRow("Revoir la visite guidée", "Les bulles d'explication de chaque onglet", tag = "more_tour") {
+            ctx.update { d -> d.copy(settings = d.settings.copy(toursSeen = emptySet())) }
+            ctx.nav.home(Tab.HOME)
+        }
+        if (androidx.compose.ui.res.booleanResource(app.boussole.R.bool.is_test_build)) {
+            InfoCard(
+                "Version de test",
+                "Signée avec une clé temporaire : avant chaque mise à jour, exporte une sauvegarde chiffrée, puis restaure-la après l'installation.",
+                Tone.WARNING,
+            )
+        }
     }
 }
 
@@ -111,87 +132,163 @@ fun ProfilePage(ctx: Ctx, data: VaultData) {
 
 // --- Comptes -----------------------------------------------------------------------
 
+private const val BALANCE_DRAFTS = "soldes."
+
+/**
+ * Soldes en cours de saisie, conservés (chiffrés) dans le coffre : on peut
+ * aller les lire dans l'app de sa banque et revenir sans rien perdre.
+ */
+@Composable
+fun rememberBalanceInputs(ctx: Ctx, data: VaultData): SnapshotStateMap<String, String> = remember {
+    mutableStateMapOf<String, String>().apply {
+        data.accounts.forEach { account -> ctx.drafts.read(BALANCE_DRAFTS + account.id)?.let { put(account.id, it) } }
+    }
+}
+
+/** Texte affiché par défaut : le solde connu, ou rien s'il n'a jamais été saisi. */
+private fun initialBalance(data: VaultData, account: Account): String =
+    if (account.openingDate == null) "" else signedEditable(Ledger.balance(account, data.transactions))
+
+/** Enregistre les soldes saisis (un solde inchangé n'est pas réécrit). */
+fun commitBalances(ctx: Ctx, data: VaultData, inputs: Map<String, String>) {
+    val now = Instant.now().toString()
+    val today = ctx.today.toString()
+    val entered = inputs.mapValues { app.boussole.core.domain.Money.parse(it.value) }
+    ctx.update { d ->
+        d.copy(accounts = d.accounts.map { a ->
+            val value = entered[a.id] ?: return@map a
+            if (a.openingDate != null && value == Ledger.balance(a, d.transactions)) a
+            else a.copy(openingBalanceCents = value, openingDate = today, openingSetAt = now)
+        })
+    }
+    ctx.drafts.clear(BALANCE_DRAFTS)
+}
+
+/** Comptes regroupés par banque : solde actuel modifiable, ajout, modification, suppression. */
+@Composable
+fun AccountsEditor(ctx: Ctx, data: VaultData, inputs: SnapshotStateMap<String, String>) {
+    var editing by remember { mutableStateOf<Account?>(null) }
+    val visible = data.accounts.filter { !it.archived }
+    visible.groupBy { it.institution.ifBlank { "Autre" } }.forEach { (bank, accounts) ->
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("🏦 $bank", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                accounts.forEach { account ->
+                    val index = visible.indexOf(account)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(Modifier.weight(1f)) {
+                            OutlinedTextField(
+                                value = inputs[account.id] ?: initialBalance(data, account),
+                                onValueChange = {
+                                    inputs[account.id] = it
+                                    ctx.drafts.save(BALANCE_DRAFTS + account.id, it)
+                                },
+                                label = { Text(account.name + if (account.name != account.effectiveProduct.label) " · ${account.effectiveProduct.label}" else "") },
+                                placeholder = { Text("Solde actuel, ex. -600") },
+                                singleLine = true,
+                                suffix = { Text("€") },
+                                isError = inputs[account.id]?.let { it.isNotBlank() && app.boussole.core.domain.Money.parse(it) == null } ?: false,
+                                modifier = Modifier.fillMaxWidth().testTag("account_balance_$index"),
+                            )
+                        }
+                        TextButton(onClick = { editing = account }, modifier = Modifier.testTag("account_edit_$index")) { Text("Modifier") }
+                    }
+                }
+            }
+        }
+    }
+    OutlinedButton(onClick = {
+        editing = Account(UUID.randomUUID().toString(), AccountProduct.LIVRET_A.label, AccountKind.SAVINGS, visible.lastOrNull()?.institution.orEmpty(), product = AccountProduct.LIVRET_A)
+    }, modifier = Modifier.fillMaxWidth().testTag("accounts_add")) { Text("+ Ajouter un compte (Livret A, PEL, assurance vie…)") }
+    editing?.let { account -> AccountDialog(ctx, data, account) { editing = null } }
+}
+
 @Composable
 fun AccountsPage(ctx: Ctx, data: VaultData) {
-    var editing by remember { mutableStateOf<Account?>(null) }
+    val inputs = rememberBalanceInputs(ctx, data)
     Page {
-        Muted("Saisis le solde actuel de chaque compte (lu dans ton app bancaire) : l'app le fait ensuite évoluer avec tes opérations.")
-        data.accounts.forEach { account ->
-            ClickableRow({ editing = account }, tag = "account_${account.institution}_${account.name}") {
-                Column(Modifier.weight(1f)) {
-                    Text(accountLabel(account))
-                    Muted(
-                        when (account.kind) {
-                            AccountKind.CHECKING -> "Compte courant" + if (account.overdraftLimitCents > 0) " · découvert autorisé ${euros(account.overdraftLimitCents)}" else ""
-                            AccountKind.SAVINGS -> "Épargne" + if (account.protected) " · protégée" else ""
-                            AccountKind.CASH -> "Espèces"
-                        } + if (account.openingDate == null) " · solde à saisir" else "",
-                    )
-                }
-                AmountText(Ledger.balance(account, data.transactions))
-            }
-            HorizontalDivider()
-        }
-        OutlinedButton(onClick = {
-            editing = Account(UUID.randomUUID().toString(), "Nouveau compte", AccountKind.CHECKING, "")
-        }, modifier = Modifier.fillMaxWidth()) { Text("+ Ajouter un compte") }
-    }
-    editing?.let { account ->
-        AccountDialog(ctx, data, account) { editing = null }
+        Muted("Recopie le solde actuel de chaque compte depuis l'app de ta banque (« - » s'il est négatif). Tu peux quitter Butin pour aller le lire : ta saisie est conservée.")
+        AccountsEditor(ctx, data, inputs)
+        PrimaryButton("Enregistrer les soldes", { commitBalances(ctx, data, inputs) ; ctx.nav.back() }, tag = "accounts_save")
     }
 }
 
 @Composable
 private fun AccountDialog(ctx: Ctx, data: VaultData, account: Account, onDone: () -> Unit) {
     val isNew = data.accounts.none { it.id == account.id }
-    val current = Ledger.balance(account, data.transactions)
-    var name by remember { mutableStateOf(account.name) }
+    val banks = data.accounts.map { it.institution }.filter { it.isNotBlank() }.distinct()
     var institution by remember { mutableStateOf(account.institution) }
-    var kind by remember { mutableStateOf(account.kind) }
-    var balance by remember { mutableStateOf(if (account.openingDate == null && current == 0L) "" else signedEditable(current)) }
+    var product by remember { mutableStateOf(account.effectiveProduct) }
+    var name by remember { mutableStateOf(account.name) }
     var overdraft by remember { mutableStateOf(editable(account.overdraftLimitCents)) }
     var protectedSavings by remember { mutableStateOf(account.protected) }
     var rate by remember { mutableStateOf(if (account.ratePercent == 0.0) "" else account.ratePercent.toString().replace('.', ',')) }
+    var confirmDelete by remember { mutableStateOf(false) }
+    val hasHistory = data.transactions.any { it.accountId == account.id }
 
     AlertDialog(
         onDismissRequest = onDone,
-        title = { Text(if (isNew) "Nouveau compte" else accountLabel(account)) },
+        title = { Text(if (isNew) "Nouveau compte" else "Modifier le compte") },
         text = {
-            Column(Modifier.exposeTags(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextInput(institution, { institution = it }, "Banque")
-                TextInput(name, { name = it }, "Nom")
-                Choices(listOf(AccountKind.CHECKING to "Courant", AccountKind.SAVINGS to "Épargne", AccountKind.CASH to "Espèces"), kind, { kind = it })
-                TextInput(balance, { balance = it }, "Solde actuel (€, « - » si négatif)", tag = "account_balance",
-                    keyboard = androidx.compose.ui.text.input.KeyboardType.Text)
-                if (kind == AccountKind.CHECKING) AmountInput(overdraft, { overdraft = it }, "Découvert autorisé (€)")
-                if (kind == AccountKind.SAVINGS) LabeledSwitch("Ne jamais y toucher", protectedSavings, { protectedSavings = it })
-                TextInput(rate, { rate = it }, if (kind == AccountKind.SAVINGS) "Taux d'intérêt (%)" else "Taux des agios (%)")
+            Column(Modifier.exposeTags().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Banque", style = MaterialTheme.typography.labelLarge)
+                if (banks.isNotEmpty()) Choices(banks.map { it to it }, institution, { institution = it })
+                TextInput(institution, { institution = it }, "Nom de la banque", tag = "account_bank")
+                Text("Type", style = MaterialTheme.typography.labelLarge)
+                Choices(AccountProduct.entries.map { it to it.label }, product, { chosen ->
+                    // Le nom suit le type tant qu'il n'a pas été personnalisé.
+                    if (name.isBlank() || AccountProduct.entries.any { it.label == name }) name = chosen.label
+                    product = chosen
+                    if (chosen.illiquid) protectedSavings = true
+                }, tagPrefix = "account_product")
+                TextInput(name, { name = it }, "Nom affiché", tag = "account_name")
+                if (product.kind == AccountKind.CHECKING) AmountInput(overdraft, { overdraft = it }, "Découvert autorisé (€)")
+                if (product.kind == AccountKind.SAVINGS) {
+                    LabeledSwitch(
+                        "Ne jamais y toucher", protectedSavings, { protectedSavings = it },
+                        if (product.illiquid) "Argent bloqué : les conseils ne le proposeront jamais." else "Les conseils ne proposeront pas de l'utiliser.",
+                    )
+                }
+                TextInput(rate, { rate = it }, if (product.kind == AccountKind.SAVINGS) "Taux d'intérêt (%)" else "Taux des agios (%)")
+                if (!isNew) {
+                    TextButton(onClick = { confirmDelete = true }) {
+                        Text(if (hasHistory) "Clôturer ce compte" else "Supprimer ce compte", color = MaterialTheme.colorScheme.error)
+                    }
+                }
             }
         },
         confirmButton = {
             TextButton(onClick = {
-                val entered = app.boussole.core.domain.Money.parse(balance)
-                val now = Instant.now().toString()
                 val updated = account.copy(
-                    name = name.trim().ifEmpty { "Compte" },
+                    name = name.trim().ifEmpty { product.label },
                     institution = institution.trim(),
-                    kind = kind,
-                    overdraftLimitCents = parseEuros(overdraft) ?: 0,
-                    protected = protectedSavings,
+                    kind = product.kind,
+                    product = product,
+                    overdraftLimitCents = if (product.kind == AccountKind.CHECKING) parseEuros(overdraft) ?: 0 else 0,
+                    protected = protectedSavings && product.kind == AccountKind.SAVINGS,
                     ratePercent = rate.replace(',', '.').toDoubleOrNull() ?: 0.0,
-                ).let { a ->
-                    if (entered != null && entered != current) {
-                        a.copy(openingBalanceCents = entered, openingDate = ctx.today.toString(), openingSetAt = now)
-                    } else if (entered != null && a.openingDate == null) {
-                        a.copy(openingBalanceCents = entered, openingDate = ctx.today.toString(), openingSetAt = now)
-                    } else a
-                }
+                )
                 ctx.update { d -> d.copy(accounts = if (isNew) d.accounts + updated else d.accounts.map { if (it.id == updated.id) updated else it }) }
                 onDone()
-            }, modifier = Modifier.dialogTag("account_save")) { Text("Enregistrer") }
+            }, enabled = institution.isNotBlank(), modifier = Modifier.dialogTag("account_save")) { Text("Enregistrer") }
         },
         dismissButton = { TextButton(onClick = onDone) { Text("Annuler") } },
     )
+    if (confirmDelete) {
+        Confirm(
+            if (hasHistory) "Clôturer « ${account.name} » ?" else "Supprimer « ${account.name} » ?",
+            if (hasHistory) "Ses opérations restent dans l'historique ; le compte n'apparaîtra plus." else "Le compte sera supprimé.",
+            if (hasHistory) "Clôturer" else "Supprimer",
+            onConfirm = {
+                ctx.update { d ->
+                    d.copy(accounts = if (hasHistory) d.accounts.map { if (it.id == account.id) it.copy(archived = true) else it } else d.accounts.filter { it.id != account.id })
+                }
+                confirmDelete = false
+                onDone()
+            },
+            onDismiss = { confirmDelete = false },
+        )
+    }
 }
 
 fun signedEditable(cents: Long): String = (if (cents < 0) "-" else "") + editable(kotlin.math.abs(cents)).ifEmpty { "0" }

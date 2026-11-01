@@ -130,7 +130,8 @@ object Advisor {
         val capacity = pay - essentials - plaisir
         val checking = view.checkingCents
         val overdraft = maxOf(0, -checking)
-        val usable = data.accounts.filter { it.kind == AccountKind.SAVINGS && !it.protected }
+        // Épargne disponible : ni protégée, ni bloquée (PEL, assurance vie, PEA…).
+        val usable = data.accounts.filter { it.kind == AccountKind.SAVINGS && !it.protected && !it.effectiveProduct.illiquid }
             .sumOf { maxOf(0, Ledger.balance(it, data.transactions) - data.profile.savingsCushionCents) }
         val emergencyTarget = essentials * data.profile.emergencyMonths
         val level = when {

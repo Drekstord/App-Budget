@@ -52,6 +52,7 @@ class Driver {
     fun find(selector: BySelector, what: String, timeout: Long = DEFAULT_TIMEOUT, scroll: Boolean = true): UiObject2 {
         val deadline = System.currentTimeMillis() + timeout
         while (System.currentTimeMillis() < deadline) {
+            if (!what.contains("tour_")) dismissTour()
             device.wait(Until.findObject(selector), 1_500)?.let { return it }
             if (dismissSystemDialogs()) continue
             if (scroll) scrollTo(selector)?.let { return it }
@@ -70,6 +71,14 @@ class Driver {
             }
         }
         return device.findObject(selector)
+    }
+
+    /** Ferme une visite guidée qui s'afficherait par-dessus l'écran (elles sont testées à part). */
+    fun dismissTour() {
+        device.findObject(By.res("tour_skip"))?.let {
+            runCatching { it.click() }
+            Thread.sleep(500)
+        }
     }
 
     fun tag(tag: String, timeout: Long = DEFAULT_TIMEOUT) = find(By.res(tag), "élément « $tag »", timeout)
@@ -92,9 +101,17 @@ class Driver {
      */
     fun click(tag: String, timeout: Long = DEFAULT_TIMEOUT) {
         tag(tag, timeout)
+        // Une visite guidée peut apparaître un instant après un changement d'onglet.
+        Thread.sleep(300)
+        if (!tag.startsWith("tour_")) dismissTour()
         repeat(5) { attempt ->
             try {
                 find(By.res(tag).enabled(true), "bouton activé « $tag »", timeout).click()
+                if (tag.startsWith("tab_")) {
+                    // Première visite d'un onglet : sa visite guidée s'ouvre peu après.
+                    Thread.sleep(1_500)
+                    dismissTour()
+                }
                 return
             } catch (e: StaleObjectException) {
                 if (attempt == 4) throw e

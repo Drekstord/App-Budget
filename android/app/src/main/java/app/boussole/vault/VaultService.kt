@@ -178,6 +178,14 @@ class VaultService(
         if (_state.value is VaultState.Unlocked) _state.value = lockedOrEmpty()
     }
 
+    /**
+     * Verrouillage automatique : attend la fin des enregistrements déjà lancés
+     * (une saisie tapée juste avant de quitter l'app n'est pas perdue).
+     */
+    fun lockAfterPendingWrites() {
+        scope.launch { mutex.withLock { lock() } }
+    }
+
     val isUnlocked: Boolean get() = _state.value is VaultState.Unlocked
 
     // --- Récupération (empreintes modifiées, mot de passe oublié) -------------

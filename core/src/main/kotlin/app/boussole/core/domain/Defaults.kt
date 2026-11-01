@@ -89,8 +89,8 @@ object Defaults {
     }
 
     fun defaultAccounts(newId: () -> String): List<Account> = listOf(
-        Account(newId(), "Compte courant", AccountKind.CHECKING, "Boursobank"),
-        Account(newId(), "Compte courant", AccountKind.CHECKING, "Caisse d'Épargne"),
-        Account(newId(), "Épargne", AccountKind.SAVINGS, "Caisse d'Épargne"),
+        Account(newId(), "Compte courant", AccountKind.CHECKING, "Boursobank", product = AccountProduct.COMPTE_COURANT),
+        Account(newId(), "Compte courant", AccountKind.CHECKING, "Caisse d'Épargne", product = AccountProduct.COMPTE_COURANT),
+        Account(newId(), "Livret A", AccountKind.SAVINGS, "Caisse d'Épargne", product = AccountProduct.LIVRET_A),
     )
 }

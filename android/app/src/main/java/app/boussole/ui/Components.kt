@@ -65,7 +65,6 @@ fun Screen(content: @Composable ColumnScope.() -> Unit) {
                 .padding(horizontal = 24.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            if (booleanResource(R.bool.is_test_build)) TestBuildBanner()
             content()
         }
     }
@@ -104,12 +103,6 @@ fun InfoCard(title: String, body: String, tone: Tone = Tone.NEUTRAL) {
     }
 }
 
-@Composable
-private fun TestBuildBanner() = InfoCard(
-    title = "Version de test",
-    body = "Signée avec une clé temporaire : avant chaque mise à jour, exporte une sauvegarde chiffrée, puis restaure-la après l'installation.",
-    tone = Tone.WARNING,
-)
 
 @Composable
 fun ErrorText(message: String?) {

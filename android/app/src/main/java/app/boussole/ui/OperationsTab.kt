@@ -1,6 +1,9 @@
 package app.boussole.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,6 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -36,19 +41,52 @@ import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
 
-private enum class Filter { ALL, PENDING, EXPENSES, INCOME }
+private enum class Filter { ALL, EXPENSES, INCOME }
+
+/** Onglet Dépenses : à valider d'abord, l'historique ensuite. */
+@Composable
+fun ExpensesTab(ctx: Ctx, data: VaultData) {
+    val pending = data.transactions.count { it.status == TransactionStatus.TO_VALIDATE }
+    var showPending by remember { mutableStateOf(pending > 0) }
+    Box(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize()) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).tourTarget(ctx.tour, "exp_tabs"),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                FilterChip(selected = showPending, onClick = { showPending = true }, label = { Text("À valider ($pending)") }, modifier = Modifier.testTag("exp_pending"))
+                FilterChip(selected = !showPending, onClick = { showPending = false }, label = { Text("Toutes") }, modifier = Modifier.testTag("exp_all"))
+            }
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 8.dp).tourTarget(ctx.tour, "exp_tools"),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                TextButton(onClick = { ctx.nav.open(Route.Import) }) { Text("📥 Importer un relevé") }
+                TextButton(onClick = { ctx.nav.open(Route.Receipt) }) { Text("📷 Scanner un ticket") }
+            }
+            Box(Modifier.weight(1f)) {
+                if (showPending) ValidationPage(ctx, data) else AllOperations(ctx, data)
+            }
+        }
+        ExtendedFloatingActionButton(
+            onClick = { ctx.nav.open(Route.Edit(null)) },
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp).testTag("ops_add").tourTarget(ctx.tour, "ops_add"),
+        ) { Text("+  Dépense") }
+    }
+}
 
 @Composable
-fun OperationsTab(ctx: Ctx, data: VaultData) {
+private fun AllOperations(ctx: Ctx, data: VaultData) {
     var filter by remember { mutableStateOf(Filter.ALL) }
     var search by remember { mutableStateOf("") }
     val shown = data.transactions
         .filter { t ->
-            when (filter) {
-                Filter.ALL -> t.status != TransactionStatus.IGNORED
-                Filter.PENDING -> t.status == TransactionStatus.TO_VALIDATE
-                Filter.EXPENSES -> t.amountCents < 0 && t.status != TransactionStatus.IGNORED
-                Filter.INCOME -> t.amountCents > 0 && t.status != TransactionStatus.IGNORED
+            t.status != TransactionStatus.IGNORED && when (filter) {
+                Filter.ALL -> true
+                Filter.EXPENSES -> t.amountCents < 0
+                Filter.INCOME -> t.amountCents > 0
             }
         }
         .filter { search.isBlank() || it.label.contains(search, ignoreCase = true) || it.note.contains(search, ignoreCase = true) }
@@ -56,23 +94,17 @@ fun OperationsTab(ctx: Ctx, data: VaultData) {
 
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         item {
-            Column(Modifier.padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { ctx.nav.open(Route.Edit(null)) }, modifier = Modifier.weight(1f).testTag("ops_add")) { Text("+ Ajouter") }
-                    OutlinedButton(onClick = { ctx.nav.open(Route.Import) }, modifier = Modifier.weight(1f)) { Text("Importer") }
-                }
-                Choices(
-                    listOf(Filter.ALL to "Toutes", Filter.PENDING to "À valider", Filter.EXPENSES to "Dépenses", Filter.INCOME to "Revenus"),
-                    filter, { filter = it }, tagPrefix = "ops_filter",
-                )
+            Column(Modifier.padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Choices(listOf(Filter.ALL to "Tout", Filter.EXPENSES to "Dépenses", Filter.INCOME to "Revenus"), filter, { filter = it }, tagPrefix = "ops_filter")
                 TextInput(search, { search = it }, "Rechercher")
             }
         }
-        if (shown.isEmpty()) item { Muted("Aucune opération.") }
+        if (shown.isEmpty()) item { Muted("Aucune opération pour l'instant.") }
         items(shown, key = { it.id }) { t ->
             TransactionRow(data, t) { ctx.nav.open(Route.Edit(t.id)) }
-            HorizontalDivider()
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         }
+        item { Spacer(Modifier.height(80.dp)) }
     }
 }
 
@@ -153,6 +185,7 @@ fun ValidationPage(ctx: Ctx, data: VaultData) {
                 }
             }
         }
+        item { Spacer(Modifier.height(80.dp)) }
     }
     picking?.let { t ->
         CategoryPicker(data, income = if (t.amountCents > 0) null else false, onPick = { id ->
@@ -176,12 +209,14 @@ fun EditTransactionPage(ctx: Ctx, data: VaultData, route: Route.Edit) {
     val existing = route.id?.let { id -> data.transactions.firstOrNull { it.id == id } }
     val base = existing ?: route.draft
     var income by remember { mutableStateOf((base?.amountCents ?: -1) > 0) }
-    var amount by remember { mutableStateOf(base?.let { editable(kotlin.math.abs(it.amountCents)) } ?: "") }
-    var label by remember { mutableStateOf(base?.label ?: "") }
-    var date by remember { mutableStateOf(base?.date?.let { fullDate(LocalDate.parse(it)) } ?: fullDate(ctx.today)) }
+    // Saisie conservée (chiffrée) si le coffre se verrouille en cours de route.
+    val draftKey = "edit.${route.id ?: route.draft?.id ?: "nouvelle"}."
+    var amount by rememberDraft(ctx, draftKey + "montant", base?.let { editable(kotlin.math.abs(it.amountCents)) } ?: "")
+    var label by rememberDraft(ctx, draftKey + "libelle", base?.label ?: "")
+    var date by rememberDraft(ctx, draftKey + "date", base?.date?.let { fullDate(LocalDate.parse(it)) } ?: fullDate(ctx.today))
     var accountId by remember { mutableStateOf(base?.accountId ?: data.accounts.firstOrNull()?.id) }
     var categoryId by remember { mutableStateOf(base?.categoryId) }
-    var note by remember { mutableStateOf(base?.note ?: "") }
+    var note by rememberDraft(ctx, draftKey + "note", base?.note ?: "")
     var pickCategory by remember { mutableStateOf(false) }
     var pickAccount by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
@@ -233,6 +268,7 @@ fun EditTransactionPage(ctx: Ctx, data: VaultData, route: Route.Edit) {
                 val updated = d.copy(transactions = list)
                 if (finalCategory != null && Merchant.key(saved.label).isNotEmpty()) Classifier.learn(updated, saved.label, finalCategory) else updated
             }
+            ctx.drafts.clear(draftKey)
             ctx.nav.back()
         }, enabled = cents != null && parsedDate != null, tag = "edit_save")
 

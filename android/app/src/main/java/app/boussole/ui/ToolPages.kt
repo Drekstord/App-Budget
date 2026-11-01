@@ -458,7 +458,7 @@ fun ReviewPage(ctx: Ctx, data: VaultData) {
         if (review.pendingCount > 0) {
             PrimaryButton("Valider les ${review.pendingCount} en attente", { ctx.nav.replace(Route.Validation) })
         }
-        OutlinedButton(onClick = { ctx.nav.back(); ctx.nav.tab = Tab.BUDGET }, modifier = Modifier.fillMaxWidth().testTag("review_budget")) {
+        OutlinedButton(onClick = { ctx.nav.replace(Route.Budget) }, modifier = Modifier.fillMaxWidth().testTag("review_budget")) {
             Text("Voir mes enveloppes")
         }
     }

@@ -73,9 +73,25 @@ class VaultJourneyTest {
         ui.awaitAfterFingerprint("onboarding_pay")
         ui.type("onboarding_pay", "1800")
         ui.type("onboarding_payday", "28")
+
+        // 5 bis. Aller voir une autre app verrouille le coffre : la saisie doit être conservée.
+        Thread.sleep(1_500)
+        ui.device.pressHome()
+        Thread.sleep(3_000)
+        ui.launchApp()
+        ui.type("secret_unlock", password)
+        ui.click("unlock_submit")
+        ui.awaitAfterFingerprint("onboarding_pay")
+        assertEquals("La paie saisie a été perdue au verrouillage\n${ui.screen()}", "1800", ui.textOf("onboarding_pay"))
         ui.click("onboarding_next")
-        ui.type("onboarding_balance_0", "-600")
-        ui.type("onboarding_balance_2", "400")
+
+        // Comptes : soldes, et un compte ajouté à la main.
+        ui.type("account_balance_0", "-600")
+        ui.type("account_balance_2", "400")
+        ui.click("accounts_add")
+        ui.type("account_name", "Livret Jeune test")
+        ui.click("account_save")
+        ui.type("account_balance_3", "150")
         ui.click("onboarding_next")
         ui.type("onboarding_charge_name", "Netflix")
         ui.type("onboarding_charge_amount", "13,49")
@@ -84,8 +100,14 @@ class VaultJourneyTest {
         ui.click("onboarding_next")
         ui.click("onboarding_next")
         ui.click("onboarding_finish")
+
+        // 5 ter. La visite guidée de l'accueil démarre toute seule ; on avance d'une bulle puis on la passe.
+        ui.tag("tour_next", timeout = 15_000)
+        ui.click("tour_next")
+        ui.click("tour_skip")
         ui.tag("home_free")
-        ui.expectText("Comptes courants")
+        ui.expectText("comptes courants")
+        ui.expectText("épargne 550,00")
 
         // 6. Une dépense captée par notification, classée par mot-clé, validée.
         ui.postNotification(1, "Paiement par carte", "Vous avez payé 12,50 € chez CARREFOUR CITY le 29/10.")
@@ -109,11 +131,12 @@ class VaultJourneyTest {
         ui.click("pending_0_validate")
         ui.click("nav_back")
 
-        // 8. Budget (enveloppes proposées) et conseils.
-        ui.click("tab_budget")
+        // 8. Le mois en détail (enveloppes proposées), puis l'onglet Objectifs.
+        ui.click("home_detail")
         ui.expectText("Disponible réel")
         ui.expectText("Courses")
-        ui.click("tab_advice")
+        ui.click("nav_back")
+        ui.click("tab_goals")
         ui.tag("advice_level")
         ui.expectText("Stopper les frais")
         ui.click("advice_new_goal")
@@ -155,11 +178,12 @@ class VaultJourneyTest {
         ui.click("secret_submit")
         ui.click("biometric_action")
         ui.awaitAfterFingerprint("home_free")
-        ui.click("tab_operations")
+        ui.click("tab_expenses")
+        ui.click("exp_all")
         ui.expectText("BOULANGERIE MARIE")
 
         // 13. Export d'une sauvegarde chiffrée : la feuille de partage s'ouvre.
-        ui.click("tab_more")
+        ui.click("nav_settings")
         ui.click("more_backup")
         ui.click("backup_export")
         assertTrue(

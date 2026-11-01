@@ -22,6 +22,11 @@ data class VaultData(
     val settings: AppSettings = AppSettings(),
     /** Clé privée X25519 de la boîte de réception des captures (cf. capture/Inbox). */
     @Serializable(with = Base64Serializer::class) val inboxPrivateKey: ByteArray = ByteArray(0),
+    /**
+     * Saisies en cours (formulaires non validés), pour les retrouver après un
+     * verrouillage : chiffrées comme le reste du coffre.
+     */
+    val drafts: Map<String, String> = emptyMap(),
 ) {
     fun category(id: String?): Category? = id?.let { wanted -> categories.firstOrNull { it.id == wanted } }
 
@@ -40,7 +45,7 @@ data class VaultData(
             transactions == other.transactions && categories == other.categories &&
             envelopes == other.envelopes && envelopeMoves == other.envelopeMoves && rules == other.rules &&
             fixedCharges == other.fixedCharges && goals == other.goals && profile == other.profile &&
-            settings == other.settings && inboxPrivateKey.contentEquals(other.inboxPrivateKey)
+            settings == other.settings && inboxPrivateKey.contentEquals(other.inboxPrivateKey) && drafts == other.drafts
 
     override fun hashCode(): Int = transactions.hashCode()
 
@@ -53,6 +58,27 @@ data class VaultData(
 
 @Serializable
 enum class AccountKind { CHECKING, SAVINGS, CASH }
+
+/**
+ * Produit bancaire précis. [illiquid] : argent qu'on ne retire pas sans casser
+ * le produit (PEL, assurance vie, PEA…) ; les conseils ne le mobilisent jamais.
+ */
+@Serializable
+enum class AccountProduct(val label: String, val kind: AccountKind, val illiquid: Boolean) {
+    COMPTE_COURANT("Compte courant", AccountKind.CHECKING, false),
+    LIVRET_A("Livret A", AccountKind.SAVINGS, false),
+    LDDS("LDDS", AccountKind.SAVINGS, false),
+    LEP("LEP", AccountKind.SAVINGS, false),
+    LIVRET_JEUNE("Livret jeune", AccountKind.SAVINGS, false),
+    LIVRET_BANCAIRE("Livret bancaire", AccountKind.SAVINGS, false),
+    CEL("CEL", AccountKind.SAVINGS, false),
+    PEL("PEL", AccountKind.SAVINGS, true),
+    ASSURANCE_VIE("Assurance vie", AccountKind.SAVINGS, true),
+    PEA("PEA", AccountKind.SAVINGS, true),
+    COMPTE_TITRES("Compte-titres", AccountKind.SAVINGS, true),
+    ESPECES("Espèces", AccountKind.CASH, false),
+    AUTRE("Autre", AccountKind.SAVINGS, false),
+}
 
 @Serializable
 data class Account(
@@ -72,7 +98,18 @@ data class Account(
     val protected: Boolean = false,
     /** Taux annuel du découvert (agios) ou de l'épargne, en pour cent. */
     val ratePercent: Double = 0.0,
-)
+    /** Produit précis (Livret A, PEL…) ; null pour les comptes créés avant. */
+    val product: AccountProduct? = null,
+    /** Compte fermé : gardé pour l'historique, plus proposé. */
+    val archived: Boolean = false,
+) {
+    val effectiveProduct: AccountProduct
+        get() = product ?: when (kind) {
+            AccountKind.CHECKING -> AccountProduct.COMPTE_COURANT
+            AccountKind.CASH -> AccountProduct.ESPECES
+            AccountKind.SAVINGS -> AccountProduct.LIVRET_BANCAIRE
+        }
+}
 
 // --- Catégories et budget -----------------------------------------------------
 
@@ -213,6 +250,8 @@ data class LifeProfile(
     /** Montant laissé sur une épargne non protégée quand on la mobilise. */
     val savingsCushionCents: Long = 10_000,
     val onboardingDone: Boolean = false,
+    /** Étape du premier lancement en cours (reprise après verrouillage). */
+    val onboardingStep: Int = 0,
 )
 
 @Serializable
@@ -227,4 +266,6 @@ data class AppSettings(
     val captureGapDays: Int = 4,
     /** App source d'une capture → compte à débiter (réglage explicite). */
     val captureAccounts: Map<String, String> = emptyMap(),
+    /** Visites guidées déjà vues (par écran). */
+    val toursSeen: Set<String> = emptySet(),
 )

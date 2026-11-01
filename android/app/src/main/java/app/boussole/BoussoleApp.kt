@@ -16,8 +16,14 @@ class BoussoleApp : Application() {
     lateinit var captureStore: CaptureStore
         private set
 
+    /** Navigation conservée tant que l'app vit, verrouillage compris (aucune donnée dedans). */
+    val nav = app.boussole.ui.Nav()
+
+    /** Enregistrements lancés depuis l'interface : ils survivent à la fermeture d'un écran. */
+    val appScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main.immediate)
+
     private val handler = Handler(Looper.getMainLooper())
-    private val lockNow = Runnable { vault.lock() }
+    private val lockNow = Runnable { vault.lockAfterPendingWrites() }
 
     /** Jusqu'à quand une activité ouverte par l'app elle-même (appareil photo, fichiers) suspend le verrouillage. */
     private var externalUntil = 0L
@@ -38,7 +44,7 @@ class BoussoleApp : Application() {
                         val grace = (vault.data()?.settings?.lockGraceSeconds ?: 0) * 1_000L
                         val external = (externalUntil - System.currentTimeMillis()).coerceAtLeast(0)
                         val delay = maxOf(grace, external)
-                        if (delay == 0L) vault.lock() else handler.postDelayed(lockNow, delay)
+                        if (delay == 0L) vault.lockAfterPendingWrites() else handler.postDelayed(lockNow, delay)
                     }
                     Lifecycle.Event.ON_START -> {
                         handler.removeCallbacks(lockNow)

@@ -108,3 +108,20 @@ class AdvisorTest {
         assertTrue(proposal.plaisirCents >= 18000)
     }
 }
+
+class IlliquidSavingsTest {
+    @Test
+    fun `un PEL ou une assurance vie ne sont jamais proposés pour combler le découvert`() {
+        val data = Fx.data {
+            copy(
+                accounts = listOf(
+                    Fx.bourso.copy(openingBalanceCents = -50000, openingDate = "2026-10-30", openingSetAt = "2026-10-30T23:00:00Z"),
+                    Fx.ceEpargne.copy(name = "PEL", product = app.boussole.core.domain.AccountProduct.PEL, openingBalanceCents = 300000, openingDate = "2026-10-30", openingSetAt = "2026-10-30T23:00:00Z"),
+                ),
+            )
+        }
+        val s = Advisor.analyze(data, LocalDate.parse("2026-10-30")).situation
+        assertEquals(0, s.usableSavingsCents)
+        assertEquals(300000, s.savingsCents)
+    }
+}
