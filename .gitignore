@@ -12,3 +12,6 @@ captures/
 *.keystore
 *.apk
 *.aab
+
+# Réglages Claude Code propres à chaque machine
+.claude/settings.local.json

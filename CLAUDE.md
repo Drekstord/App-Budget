@@ -63,3 +63,10 @@ UI Automator drives the installed app by **test tags** (`testTagsAsResourceId`).
 - Keep `FLAG_SECURE`, `allowBackup=false` and the data-extraction exclusions. Notifications and reminders never show amounts on the lock screen.
 - Test-only diagnostics (`BoussoleTrace` logging, crash reports, the e2e package in the capture whitelist) are gated on the `is_test_build` resource and must never log financial data.
 - Release signing uses the user's own key via the `BOUSSOLE_KEYSTORE*` env vars. Without them, the APK is a debug-signed "Butin (test)" build, so every new test version must be uninstalled and the data restored from a backup.
+
+## Claude Code automations (`.claude/`)
+
+- **Hooks** (`.claude/settings.json`): `hooks/garde_reseau.py` blocks, before writing, any edit that adds a network permission, a network/telemetry/third-party dependency or network code in `src/main` (exit 2 with the reason). `hooks/compile_coeur.sh` compiles `core` after each edit of a `core/**/*.kt` file and reports compiler errors and warnings; it does not block when dependencies cannot be downloaded.
+- **Skills**: `/livrer` (user-invoked only) runs the full delivery cycle: core tests, push, CI follow-up, Release check, French summary for the user. `format-bancaire` turns a real bank notification, statement header or unknown banking app pasted by the user into an anonymized core test plus a parser fix.
+- **Agent** `security-reviewer`: read-only review of a diff against `docs/SECURITE.md`. Run it before delivering anything that touches crypto, the vault, backups, capture, notifications, logs, the manifest or dependencies.
+- **MCP** (`.mcp.json`): context7, for up-to-date docs on Compose, AGP, AndroidX and Bouncy Castle. It is only used while developing; the app itself stays offline.
